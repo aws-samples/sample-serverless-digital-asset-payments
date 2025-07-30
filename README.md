@@ -1,5 +1,5 @@
 # Crypto Invoice CDK Solution
-**Authored by: Simon Goldberg**
+**Authored by: Simon Goldberg and David Dornseifer**
 
 This solution supports both ETH and ERC20 token payments on *any* EVM-compatible blockchain with automated payment detection and fund sweeping capabilities.
 
