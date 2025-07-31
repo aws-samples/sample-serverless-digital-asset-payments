@@ -15,28 +15,28 @@ The numbers of each of the steps in the payment flow correspond with the numbers
 1. **Invoice Creation**
    - Merchant creates an invoice via the `/create-invoice` REST API (Amazon API Gateway).
 
-2. **Invoice Generation**
+2-4 **Invoice Generation**
    - The Invoice Generator Lambda is triggered, retrieves the mnemonic from AWS Secrets Manager, and increments an atomic counter in DynamoDB to deterministically derive a new HD wallet address.
 
-3. **Invoice Storage**
+4. **Invoice Storage**
    - The Lambda creates a new invoice with `paymentstatus: pending` and stores it in DynamoDB.
 
-4. **QR Code Delivery**
+5. **QR Code Delivery**
    - A QR code containing the target address, currency, and amount is generated and returned to the merchant for sharing with the customer.
 
-5. **Payment Monitoring**
+6. **Payment Monitoring**
    - A watcher Lambda, triggered every minute via EventBridge, fetches all pending invoices and checks for payments via the RPC endpoint. Paid invoices are updated accordingly.
 
-6. **Payment Confirmation**
+7. **Payment Confirmation**
    - The watcher Lambda can send payment confirmations via Amazon SNS, which can trigger email notifications or push updates.
 
-7. **Sweeper Trigger**
+8. **Sweeper Trigger**
    - When a payment is detected, a DynamoDB Stream event triggers the Sweeper Lambda process.
 
-8. **Sweeping Funds**
+9-10 **Sweeping Funds**
    - The Sweeper calculates required gas and sends additional native gas tokens to an invoice's address if necessary (ie for ERC20 invoices). Once sufficient gas is available to make a transaction, funds are "swept" to the offline treasury wallet. The invoice is then marked as swept. 
 
-9. **Invoice Management**
+11. **Invoice Management**
    - Merchants can manage invoices (view status, update payments) via REST endpoints exposed by API Gateway.
 
 ### Technical Payment Flow
