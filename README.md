@@ -15,7 +15,7 @@ The numbers of each of the steps in the payment flow correspond with the numbers
 1. **Invoice Creation**
    - Merchant creates an invoice via the `/create-invoice` REST API (Amazon API Gateway).
 
-2-4 **Invoice Generation**
+2-3 **Invoice Generation**
    - The Invoice Generator Lambda is triggered, retrieves the mnemonic from AWS Secrets Manager, and increments an atomic counter in DynamoDB to deterministically derive a new HD wallet address.
 
 4. **Invoice Storage**
