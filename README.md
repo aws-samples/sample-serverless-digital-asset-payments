@@ -1,4 +1,4 @@
-# Digital Asset Payments on AWS
+# Processing Digital Asset Payments on AWS
 **Authored by: Simon Goldberg and David Dornseifer**
 
 This solution supports both ETH and ERC20 token payments on *any* EVM-compatible blockchain with automated payment detection and fund sweeping capabilities.
@@ -34,7 +34,7 @@ The numbers of each of the steps in the payment flow correspond with the numbers
    - When a payment is detected, a DynamoDB Stream event triggers the Sweeper Lambda process.
 
 8. **Sweeping Funds**
-   - The Sweeper calculates required gas, requests additional native gas tokens if necessary (ie for ERC20 invoices). Once sufficient gas is available to make a transaction, funds are "swept" the offline treasury wallet. The invoice is then marked as swept.
+   - The Sweeper calculates required gas and sends additional native gas tokens to an invoice's address if necessary (ie for ERC20 invoices). Once sufficient gas is available to make a transaction, funds are "swept" the offline treasury wallet. The invoice is then marked as swept.
 
 9. **Invoice Management**
    - Merchants can manage invoices (view status, update payments) via REST endpoints exposed by API Gateway.
