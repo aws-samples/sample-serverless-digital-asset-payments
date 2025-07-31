@@ -34,7 +34,7 @@ The numbers of each of the steps in the payment flow correspond with the numbers
    - When a payment is detected, a DynamoDB Stream event triggers the Sweeper Lambda process.
 
 8. **Sweeping Funds**
-   - The Sweeper calculates required gas and sends additional native gas tokens to an invoice's address if necessary (ie for ERC20 invoices). Once sufficient gas is available to make a transaction, funds are "swept" the offline treasury wallet. The invoice is then marked as swept.
+   - The Sweeper calculates required gas and sends additional native gas tokens to an invoice's address if necessary (ie for ERC20 invoices). Once sufficient gas is available to make a transaction, funds are "swept" to the offline treasury wallet. The invoice is then marked as swept. 
 
 9. **Invoice Management**
    - Merchants can manage invoices (view status, update payments) via REST endpoints exposed by API Gateway.
@@ -58,7 +58,7 @@ Required in `.env` file:
 - `RPC_URL`: EVM-compatible RPC URL
 - `TREASURY_PUBLIC_ADDRESS`: The destination wallet address where collected funds will be automatically transferred (swept). This should be a secure wallet, such as a hardware wallet (e.g., Ledger, Trezor), to ensure maximum security for your accumulated funds.
 - `HOT_WALLET_PK`: The private key of a wallet used to provide gas fees for ERC-20 transactions. This wallet needs to be funded with a network's native gas token (e.g., Sepolia ETH for Sepolia testnet).
-- `PAYER_PRIVATE_KEY`: Test payer private key (for execute_payment script)
+- `PAYER_PRIVATE_KEY`: Test payer private key (optional variable for execute_payment script)
 
 ```bash
 # Copy the sample environment file and update with your values
@@ -273,6 +273,7 @@ rm -rf node_modules/ cdk.out/
    - Check hot wallet has sufficient ETH for gas
    - Verify treasury address configuration
    - Monitor Sweeper function logs
+   - If an invoice gets stuck in the "swept" state, navigate to the CryptoInvoices DynamoDB Table in the AWS Console and change the status of the invoice back to "paid". This state transition will reinvoke the Sweeper function. 
 
 4. **API Authentication:**
    - Retrieve API key from AWS Console → API Gateway → API Keys
