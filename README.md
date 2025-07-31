@@ -273,7 +273,7 @@ rm -rf node_modules/ cdk.out/
    - Check hot wallet has sufficient ETH for gas
    - Verify treasury address configuration
    - Monitor Sweeper function logs
-   - If an invoice gets stuck in the "swept" state, navigate to the CryptoInvoices DynamoDB Table in the AWS Console and change the status of the invoice back to "paid". This state transition will reinvoke the Sweeper function. 
+   - If there is an error and an invoice gets stuck in the "paid" state, navigate to the CryptoInvoices DynamoDB Table in the AWS Console and change the status of the invoice back to "pending". Then, change it back to "paid". This state transition will reinvoke the Sweeper function. 
 
 4. **API Authentication:**
    - Retrieve API key from AWS Console → API Gateway → API Keys
