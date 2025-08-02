@@ -13,28 +13,28 @@ This solution supports both ETH and ERC20 token payments on *any* EVM-compatible
 The numbers of each of the steps in the payment flow correspond with the numbers in the architecture diagram above.
 
 1. **Invoice Creation**
-   - Merchant creates an invoice via the `/create-invoice` REST API (Amazon API Gateway).
+- Merchant creates an invoice via the `/create-invoice` REST API (Amazon API Gateway).
 
-2-3 **Invoice Generation**
+2-3. **Invoice Generation**
    - The Invoice Generator Lambda is triggered, retrieves the mnemonic from AWS Secrets Manager, and increments an atomic counter in DynamoDB to deterministically derive a new HD wallet address.
 
 4. **Invoice Storage**
-   - The Lambda creates a new invoice with `paymentstatus: pending` and stores it in DynamoDB.
+- The Lambda creates a new invoice with `paymentstatus: pending` and stores it in DynamoDB.
 
 5. **QR Code Delivery**
-   - A QR code containing the target address, currency, and amount is generated and returned to the merchant for sharing with the customer.
+- A QR code containing the target address, currency, and amount is generated and returned to the merchant for sharing with the customer.
 
 6. **Payment Monitoring**
-   - A watcher Lambda, triggered every minute via EventBridge, fetches all pending invoices and checks for payments via the RPC endpoint. Paid invoices are updated accordingly.
+- A watcher Lambda, triggered every minute via EventBridge, fetches all pending invoices and checks for payments via the RPC endpoint. Paid invoices are updated accordingly.
 
 7. **Payment Confirmation**
-   - The watcher Lambda can send payment confirmations via Amazon SNS, which can trigger email notifications or push updates.
+- The watcher Lambda can send payment confirmations via Amazon SNS, which can trigger email notifications or push updates.
 
 8. **Sweeper Trigger**
-   - When a payment is detected, a DynamoDB Stream event triggers the Sweeper Lambda process.
+- When a payment is detected, a DynamoDB Stream event triggers the Sweeper Lambda process.
 
-9-10 **Sweeping Funds**
-   - The Sweeper calculates required gas and sends additional native gas tokens to an invoice's address if necessary (ie for ERC20 invoices). Once sufficient gas is available to make a transaction, funds are "swept" to the offline treasury wallet. The invoice is then marked as swept. 
+9-10. **Sweeping Funds**
+- The Sweeper calculates required gas and sends additional native gas tokens to an invoice's address if necessary (ie for ERC20 invoices). Once sufficient gas is available to make a transaction, funds are "swept" to the offline treasury wallet. The invoice is then marked as swept. 
 
 11. **Invoice Management**
    - Merchants can manage invoices (view status, update payments) via REST endpoints exposed by API Gateway.
