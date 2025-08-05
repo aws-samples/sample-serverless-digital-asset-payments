@@ -2,14 +2,12 @@ module.exports = {
   root: true,
   env: {
     node: true,
-    es6: true
+    es6: true,
   },
-  extends: [
-    'eslint:recommended'
-  ],
+  extends: ['eslint:recommended'],
   parserOptions: {
     ecmaVersion: 2020,
-    sourceType: 'module'
+    sourceType: 'module',
   },
   rules: {
     // Security best practices without external plugins
@@ -28,31 +26,22 @@ module.exports = {
     'no-sequences': 'error',
     'no-throw-literal': 'error',
     'no-void': 'error',
-    'radix': 'error',
+    radix: 'error',
     'wrap-iife': ['error', 'any'],
-    'yoda': 'error'
+    yoda: 'error',
   },
   overrides: [
     {
       files: ['**/*.ts'],
       parser: '@typescript-eslint/parser',
       plugins: ['@typescript-eslint'],
-      extends: [
-        'eslint:recommended',
-        'plugin:@typescript-eslint/recommended'
-      ],
+      extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
       rules: {
         '@typescript-eslint/no-explicit-any': 'error',
         '@typescript-eslint/no-non-null-assertion': 'error',
-        '@typescript-eslint/prefer-as-const': 'error'
-      }
-    }
+        '@typescript-eslint/prefer-as-const': 'error',
+      },
+    },
   ],
-  ignorePatterns: [
-    'node_modules/',
-    'dist/',
-    'cdk.out/',
-    'test/**/*',
-    '*.d.ts'
-  ]
+  ignorePatterns: ['node_modules/', 'dist/', 'cdk.out/', 'test/**/*', '*.d.ts'],
 };

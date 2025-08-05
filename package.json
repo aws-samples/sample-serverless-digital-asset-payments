@@ -13,6 +13,7 @@
     "constructs": "^10.3.0",
     "dotenv": "^16.5.0",
     "esbuild": "^0.25.5",
+    "eth-cli": "^2.0.2",
     "ethers": "^6.14.3",
     "qrcode": "^1.5.4"
   },

@@ -47,7 +47,7 @@ echo "y" | ./test/integration/execute_payment.sh ETH 0.0001
 
 # Step 3: Cleanup
 print_status "Step 3/3: Running cleanup..."
-# ./test/integration/cleanup.sh
+./test/integration/cleanup.sh
 
 # Success
 echo -e "\n${GREEN}=== Pipeline Completed Successfully ===${NC}"
