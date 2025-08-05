@@ -17,9 +17,16 @@
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.0",
     "@types/node": "^22.15.2",
-    "typescript": "^5.0.0",
-    "cdk-nag": "^2.28.0"
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "cdk-nag": "^2.28.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-security": "^1.7.1",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.0.0"
   },
   "scripts": {
     "build": "npx tsc",
@@ -33,6 +40,15 @@
     "derive-address": "node scripts/derive-address.js",
     "wallet-info": "node scripts/wallet-info.js",
     "test-invoice-management": "./test/integration/test-invoice-management-api.sh",
-    "nag": "cdk synth --quiet && echo 'CDK Nag evaluation completed'"
+    "nag": "cdk synth --quiet && echo 'CDK Nag evaluation completed'",
+    "test": "npm run build && jest",
+    "test:cdk": "./scripts/test-cdk.sh",
+    "test:lambda": "jest test/unit --ignore-pattern=test/unit/cdk",
+    "lint": "eslint . --ext .js,.ts",
+    "lint:fix": "eslint . --ext .js,.ts --fix",
+    "format": "prettier --write \"**/*.{js,ts,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,ts,json,md}\"",
+    "security": "eslint . --ext .js,.ts --config .eslintrc.security.js",
+    "lint-check": "./scripts/lint-check.sh"
   }
 }

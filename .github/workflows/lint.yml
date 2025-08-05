@@ -1,0 +1,95 @@
+name: Lint & Static Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    name: ESLint & Prettier
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run TypeScript compilation
+      run: npm run build
+      
+    - name: Run ESLint
+      run: npm run lint -- --format=github
+      
+    - name: Check Prettier formatting
+      run: npm run format:check
+
+  security:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run security linting
+      run: npm run security -- --format=github
+      
+    - name: Run CDK Nag security analysis
+      run: npm run nag
+      env:
+        RPC_URL: https://eth-sepolia.g.alchemy.com/v2/demo
+        TREASURY_PUBLIC_ADDRESS: "0x1234567890123456789012345678901234567890"
+        
+    - name: Run npm audit
+      run: npm audit --audit-level=moderate
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: javascript
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build project
+      run: npm run build
+      
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
