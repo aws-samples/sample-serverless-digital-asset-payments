@@ -4,7 +4,6 @@ cdk.out/
 
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 
 # TypeScript build artifacts
@@ -43,3 +42,4 @@ lambda/**/node_modules/
 .env.test.local
 .env.production.local
 qrcode.html
+.kiro/

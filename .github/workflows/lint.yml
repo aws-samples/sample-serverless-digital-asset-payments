@@ -1,0 +1,48 @@
+# This workflow will lint the entire codebase using the
+# `super-linter/super-linter` action.
+#
+# For more information, see the super-linter repository:
+#     https://github.com/super-linter/super-linter
+name: Lint Codebase
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: read
+  statuses: write
+
+jobs:
+  lint:
+    name: Lint Codebase
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install CDK
+        id: install-cdk
+        run: npm install -g aws-cdk@2.1023.0
+
+      - name: Install Dependencies
+        id: install
+        run: npm ci
+
+      - name: Lint Codebase
+        run: npm run lint-check

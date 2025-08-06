@@ -1,0 +1,8 @@
+node_modules/
+dist/
+cdk.out/
+*.d.ts
+package-lock.json
+.env
+.env.*
+*.log
