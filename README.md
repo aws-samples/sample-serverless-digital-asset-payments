@@ -2,7 +2,7 @@
 
 **Authored by: Simon Goldberg and David Dornseifer**
 
-This solution supports both ETH and ERC20 token payments on _any_ EVM-compatible
+This solution supports native (i.e ETH) and ERC20 token payments on _any_ EVM-compatible
 blockchain with automated payment detection and fund sweeping capabilities.
 
 ## Architecture
