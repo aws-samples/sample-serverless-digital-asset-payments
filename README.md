@@ -41,7 +41,7 @@ in the architecture diagram above.
 
 4. **Invoice Storage**
 
-- The Lambda creates a new invoice with `paymentstatus: pending` and stores it
+- The Lambda creates a new invoice with payment `status: pending` and stores it
   in DynamoDB.
 
 5. **QR Code Delivery**
@@ -88,10 +88,7 @@ in the architecture diagram above.
 To deploy this solution, complete the following prerequisite steps to set up
 your environment:
 
-1. AWS Account and configured AWS CLI. For instructions, refer to
-   [Installing or updating to the latest version of the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-   and
-   [Getting started with the AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html).
+1. AWS Account
 2. Node.js 18.x or later.
 3. AWS CDK CLI installed (npm install -g aws-cdk)
 4. Ethereum or EVM-compatible node access (Infura or similar)
