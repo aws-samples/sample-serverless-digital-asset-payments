@@ -98,11 +98,10 @@ your environment:
 
 ### Clone the Repository and Install Dependencies
 
-Run the following commands to clone the GitHub repo and install dependencies:
+Run the following commands to clone the GitHub repo:
 
 ```bash
 git clone git@github.com:aws-samples/sample-serverless-digital-asset-payments.git && cd sample-serverless-digital-asset-payments
-npm install
 ```
 
 ### Configure Environment Variables
