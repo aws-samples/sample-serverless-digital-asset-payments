@@ -85,9 +85,13 @@ in the architecture diagram above.
 
 ### Prerequisites
 
-To deploy this solution, complete the following prerequisite steps to set up your environment:
+To deploy this solution, complete the following prerequisite steps to set up
+your environment:
 
-1. AWS Account and configured AWS CLI. For instructions, refer to [Installing or updating to the latest version of the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and [Getting started with the AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html).
+1. AWS Account and configured AWS CLI. For instructions, refer to
+   [Installing or updating to the latest version of the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+   and
+   [Getting started with the AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html).
 2. Node.js 18.x or later.
 3. AWS CDK CLI installed (npm install -g aws-cdk)
 4. Ethereum or EVM-compatible node access (Infura or similar)
@@ -103,9 +107,17 @@ npm install
 
 ### Configure Environment Variables
 
-For straightforward deployment and to support the development or extension of this payment solution, parameters are sourced from an `.env` file during deployment.
+For straightforward deployment and to support the development or extension of
+this payment solution, parameters are sourced from an `.env` file during
+deployment.
 
-**Security Warning:** Private key management is a complex and critical aspect of secure system design. For production environments, private keys and other sensitive credentials should never be stored in plaintext files or embedded in source code. Instead, always use dedicated secret management solutions such as Secrets Manager, AWS KMS, or AWS Nitro Enclaves to securely derive, store, and handle sensitive information. Improper handling of private keys can lead to serious security vulnerabilities and potential data breaches.
+**Security Warning:** Private key management is a complex and critical aspect of
+secure system design. For production environments, private keys and other
+sensitive credentials should never be stored in plaintext files or embedded in
+source code. Instead, always use dedicated secret management solutions such as
+Secrets Manager, AWS KMS, or AWS Nitro Enclaves to securely derive, store, and
+handle sensitive information. Improper handling of private keys can lead to
+serious security vulnerabilities and potential data breaches.
 
 Copy the sample configuration:
 
@@ -115,23 +127,33 @@ cp .env-sample .env
 
 Update the `.env` file with the following values:
 
-- `RPC_URL`: The HTTPS RPC URL for your blockchain network (for example, Ethereum)
-- `TREASURY_PUBLIC_ADDRESS`: The cold storage wallet address where collected funds will be automatically transferred (swept). This should be a secure wallet, such as a hardware wallet (e.g., Ledger, Trezor), to ensure maximum security for your accumulated funds.
-- `HOT_WALLET_PK`: A funded wallet used to cover gas payments for sweeping operations. The key must be provided as a 64-character representation, for example as exported from a development or test MetaMask wallet. Make sure this wallet holds enough native tokens (ETH) to cover transaction fees. You can obtain testnet ether from a faucet.
-- `PAYER_PRIVATE_KEY`: Test payer private key (optional variable for execute_payment script)
+- `RPC_URL`: The HTTPS RPC URL for your blockchain network (for example,
+  Ethereum)
+- `TREASURY_PUBLIC_ADDRESS`: The cold storage wallet address where collected
+  funds will be automatically transferred (swept). This should be a secure
+  wallet, such as a hardware wallet (e.g., Ledger, Trezor), to ensure maximum
+  security for your accumulated funds.
+- `HOT_WALLET_PK`: A funded wallet used to cover gas payments for sweeping
+  operations. The key must be provided as a 64-character representation, for
+  example as exported from a development or test MetaMask wallet. Make sure this
+  wallet holds enough native tokens (ETH) to cover transaction fees. You can
+  obtain testnet ether from a faucet.
+- `PAYER_PRIVATE_KEY`: Test payer private key (optional variable for
+  execute_payment script)
 
 ### Quick Start -- Automated Installation
 
 For complete automated setup:
 
 ```bash
-# 1. Make sure you have copied and configured your .env file 
+# 1. Make sure you have copied and configured your .env file
 
 # 2. Run the complete setup
 npm run setup
 ```
 
-This script handles all installation, deployment, and configuration steps automatically.
+This script handles all installation, deployment, and configuration steps
+automatically.
 
 ### Manual Installation
 
@@ -160,11 +182,14 @@ The script will securely store the following:
 - The generated seed phrase (for deterministic address generation)
 - The hot wallet private key you defined in your .env file
 
-Both values are encrypted and stored in Secrets Manager. Consider more advanced solutions such as AWS KMS or Nitro Enclaves based wallet solutions for production workloads.
+Both values are encrypted and stored in Secrets Manager. Consider more advanced
+solutions such as AWS KMS or Nitro Enclaves based wallet solutions for
+production workloads.
 
 4. **Set up payment notifications (Optional):**
 
-To receive email alerts when payments are detected or errors with sweeping occur, complete the following steps:
+To receive email alerts when payments are detected or errors with sweeping
+occur, complete the following steps:
 
 - Navigate to AWS Console → SNS topic created by the stack
 - Click "Create subscription" → Select "Email" protocol
@@ -177,26 +202,30 @@ Optionally, you can integrate Slack, Lambda consumers, or webhooks as needed.
 
 ### Create a Test Invoice and Send a Payment
 
-Now that the crypto invoice system is deployed, you can test it by creating an invoice and making a payment.
+Now that the crypto invoice system is deployed, you can test it by creating an
+invoice and making a payment.
 
-First, retrieve the API Gateway URL and API key from the deployed stack and expose these values as environment variables:
+First, retrieve the API Gateway URL and API key from the deployed stack and
+expose these values as environment variables:
 
 ```bash
-export STACK_NAME="CryptoInvoiceStack"  
+export STACK_NAME="CryptoInvoiceStack"
 
 export API_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
   --query "Stacks[0].Outputs[?OutputKey=='InvoiceApiBaseUrl'].OutputValue" --output text)
-  
+
 export API_KEY_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
   --query "Stacks[0].Outputs[?OutputKey=='InvoiceApiKeyId'].OutputValue" --output text)
-  
+
 export API_KEY=$(aws apigateway get-api-key --api-key "$API_KEY_ID" --include-value \
   --query 'value' --output text 2>/dev/null)
-  
+
 echo "API URL: $API_URL"
 ```
 
-Make a request to your API Gateway endpoint and create a sample invoice. For example, the following curl request creates a $5 USDC invoice on Ethereum's Sepolia testnet:
+Make a request to your API Gateway endpoint and create a sample invoice. For
+example, the following curl request creates a $5 USDC invoice on Ethereum's
+Sepolia testnet:
 
 ```bash
 curl -X POST "${API_URL}generateInvoice" \
@@ -211,7 +240,8 @@ curl -X POST "${API_URL}generateInvoice" \
   }'
 ```
 
-You will receive a unique deposit address and a representation of a QR code in the response:
+You will receive a unique deposit address and a representation of a QR code in
+the response:
 
 ```json
 {
@@ -222,9 +252,13 @@ You will receive a unique deposit address and a representation of a QR code in t
 }
 ```
 
-The QR code is returned as a Base64-encoded Data URL, which can be directly embedded in HTML. This format allows you to use it as the src attribute of an `<img>` tag without additional processing. You can also enter the qrcodeBase64 value into your web browser's address bar to display the image.
+The QR code is returned as a Base64-encoded Data URL, which can be directly
+embedded in HTML. This format allows you to use it as the src attribute of an
+`<img>` tag without additional processing. You can also enter the qrcodeBase64
+value into your web browser's address bar to display the image.
 
-The following code shows an example of how to extract the QR code from the invoice generator's response and save it in an HTML file:
+The following code shows an example of how to extract the QR code from the
+invoice generator's response and save it in an HTML file:
 
 ```bash
 RESPONSE='{ ... your JSON Invoice response here ... }'
@@ -236,11 +270,13 @@ Open `qrcode.html` in your browser to view the QR code.
 
 ### Send Testnet USDC
 
-Send testnet USDC to the invoice's address to trigger the payment flow. You can obtain testnet USDC for Ethereum Sepolia through Circle's Testnet Faucet.
+Send testnet USDC to the invoice's address to trigger the payment flow. You can
+obtain testnet USDC for Ethereum Sepolia through Circle's Testnet Faucet.
 
 ### Request a Specific Invoice
 
-To request a specific invoice, replace the {invoiceID} placeholder with the invoiceId value received earlier:
+To request a specific invoice, replace the {invoiceID} placeholder with the
+invoiceId value received earlier:
 
 ```bash
 curl -X GET "${API_URL}invoices/{invoiceId}" \
@@ -266,11 +302,13 @@ You will receive a result similar to the following:
 ```
 
 The status field of an invoice will change throughout the transaction lifecycle:
+
 - `pending`: Invoice created, awaiting payment
 - `paid`: Payment detected and confirmed
 - `swept`: Funds successfully transferred to treasury wallet
 
-After it's marked as swept, you can verify that the balance of the paid invoice appears in the cold wallet balance to confirm the successful transfer of funds.
+After it's marked as swept, you can verify that the balance of the paid invoice
+appears in the cold wallet balance to confirm the successful transfer of funds.
 
 ## API Reference
 
@@ -294,7 +332,8 @@ After it's marked as swept, you can verify that the balance of the paid invoice 
 
 **Retrieving API Endpoint and Key:**
 
-Use the environment variables set up in the usage section above (`$API_URL` and `$API_KEY`).
+Use the environment variables set up in the usage section above (`$API_URL` and
+`$API_KEY`).
 
 **Example Requests:**
 
@@ -336,7 +375,8 @@ curl -X POST "${API_URL}generateInvoice" \
 }
 ```
 
-After creating an invoice, payment must be sent to the designated invoice address to initiate the payment process.
+After creating an invoice, payment must be sent to the designated invoice
+address to initiate the payment process.
 
 **Security Note:** For production environments, do not accept `tokenAddress` and
 `decimals` directly from the client-side. Maintain a pre-approved list of tokens
