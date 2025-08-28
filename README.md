@@ -270,7 +270,8 @@ Open `qrcode.html` in your browser to view the QR code.
 ### Send Testnet USDC
 
 Send testnet USDC to the invoice's address to trigger the payment flow. You can
-obtain testnet USDC for Ethereum Sepolia through [Circle's Testnet Faucet](https://faucet.circle.com/).
+obtain testnet USDC for Ethereum Sepolia through
+[Circle's Testnet Faucet](https://faucet.circle.com/).
 
 ### Request a Specific Invoice
 
