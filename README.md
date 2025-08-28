@@ -94,7 +94,7 @@ To deploy this solution, complete the following prerequisite steps to set up you
 
 ### Clone the Repository and Install Dependencies
 
-Use the following code to clone the GitHub repo and install dependencies:
+Run the following commands to clone the GitHub repo and install dependencies:
 
 ```bash
 git clone git@github.com:aws-samples/sample-serverless-digital-asset-payments.git && cd sample-serverless-digital-asset-payments
