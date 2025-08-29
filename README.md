@@ -11,7 +11,7 @@ capabilities.
 - [Architecture](#architecture)
 - [Deployment](#deployment)
   - [Prerequisites](#prerequisites)
-  - [Quick Start](#quick-start----automated-installation)
+  - [Quick Start](#quick-start--automated-installation)
   - [Manual Installation](#manual-installation)
 - [Using the Payment System](#using-the-payment-system)
 - [API Reference](#api-reference)
@@ -33,11 +33,13 @@ in the architecture diagram above.
 - Merchant creates an invoice via the `/create-invoice` REST API (Amazon API
   Gateway).
 
-2-3. **Invoice Generation**
+2. **Fetch seed phrase**
 
-- The Invoice Generator Lambda is triggered, retrieves the mnemonic from AWS
-  Secrets Manager, and increments an atomic counter in DynamoDB to
-  deterministically derive a new HD wallet address.
+- The Invoice Generator Lambda is triggered and retrieves the mnemonic from AWS Secrets Manager. 
+
+3. **Increment atomic counter**
+
+- An atomic counter is incremented in DynamoDB. This is used to deterministically derive a new HD wallet address.
 
 4. **Invoice Storage**
 
@@ -65,12 +67,13 @@ in the architecture diagram above.
 - When a payment is detected, a DynamoDB Stream event triggers the Sweeper
   Lambda process.
 
-9-10. **Sweeping Funds**
+9. **Gas Top-up**
 
-- The Sweeper calculates required gas and sends additional native gas tokens to
-  an invoice's address if necessary (ie for ERC20 invoices). Once sufficient gas
-  is available to make a transaction, funds are "swept" to the offline treasury
-  wallet. The invoice is then marked as swept.
+- The Sweeper calculates required gas and sends additional native gas tokens to an invoice's address if necessary (ie for ERC20 invoices). 
+
+10. **Sweeping Funds**
+
+- Once sufficient gas is available to make a transaction, funds are "swept" to the offline treasury wallet. The invoice is then marked as swept.
 
 11. **Invoice Management**
 
@@ -107,14 +110,6 @@ For straightforward deployment and to support the development or extension of
 this payment solution, parameters are sourced from an `.env` file during
 deployment.
 
-**Security Warning:** Private key management is a complex and critical aspect of
-secure system design. For production environments, private keys and other
-sensitive credentials should never be stored in plaintext files or embedded in
-source code. Instead, always use dedicated secret management solutions such as
-Secrets Manager, AWS KMS, or AWS Nitro Enclaves to securely derive, store, and
-handle sensitive information. Improper handling of private keys can lead to
-serious security vulnerabilities and potential data breaches.
-
 Copy the sample configuration:
 
 ```bash
@@ -137,7 +132,7 @@ Update the `.env` file with the following values:
 - `PAYER_PRIVATE_KEY`: Test payer private key (optional variable for
   execute_payment script)
 
-### Quick Start -- Automated Installation
+### Quick Start - Automated Installation
 
 For complete automated setup:
 
@@ -150,6 +145,8 @@ npm run setup
 
 This script handles all installation, deployment, and configuration steps
 automatically.
+
+**Ready to test?** [Use the payment system](#using-the-payment-system)
 
 ### Manual Installation
 
@@ -178,9 +175,7 @@ The script will securely store the following:
 - The generated seed phrase (for deterministic address generation)
 - The hot wallet private key you defined in your .env file
 
-Both values are encrypted and stored in Secrets Manager. Consider more advanced
-solutions such as AWS KMS or Nitro Enclaves based wallet solutions for
-production workloads.
+Both values are encrypted and stored in Secrets Manager.
 
 4. **Set up payment notifications (Optional):**
 
