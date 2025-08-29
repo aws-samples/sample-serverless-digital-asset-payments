@@ -35,11 +35,13 @@ in the architecture diagram above.
 
 2. **Fetch seed phrase**
 
-- The Invoice Generator Lambda is triggered and retrieves the mnemonic from AWS Secrets Manager. 
+- The Invoice Generator Lambda is triggered and retrieves the mnemonic from AWS
+  Secrets Manager.
 
 3. **Increment atomic counter**
 
-- An atomic counter is incremented in DynamoDB. This is used to deterministically derive a new HD wallet address.
+- An atomic counter is incremented in DynamoDB. This is used to
+  deterministically derive a new HD wallet address.
 
 4. **Invoice Storage**
 
@@ -69,11 +71,13 @@ in the architecture diagram above.
 
 9. **Gas Top-up**
 
-- The Sweeper calculates required gas and sends additional native gas tokens to an invoice's address if necessary (ie for ERC20 invoices). 
+- The Sweeper calculates required gas and sends additional native gas tokens to
+  an invoice's address if necessary (ie for ERC20 invoices).
 
 10. **Sweeping Funds**
 
-- Once sufficient gas is available to make a transaction, funds are "swept" to the offline treasury wallet. The invoice is then marked as swept.
+- Once sufficient gas is available to make a transaction, funds are "swept" to
+  the offline treasury wallet. The invoice is then marked as swept.
 
 11. **Invoice Management**
 
