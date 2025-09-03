@@ -105,7 +105,7 @@ your environment:
 Run the following commands to clone the GitHub repo:
 
 ```bash
-git clone git@github.com:aws-samples/sample-serverless-digital-asset-payments.git && cd sample-serverless-digital-asset-payments
+git clone https://github.com/aws-samples/sample-serverless-digital-asset-payments.git && cd sample-serverless-digital-asset-payments
 ```
 
 ### Configure Environment Variables
