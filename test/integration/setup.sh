@@ -39,15 +39,31 @@ print_header() {
     echo -e "${BLUE}================================${NC}\n"
 }
 
-# Ensure AWS region is configured
 require_region() {
-    AWS_REGION=$(aws configure get region 2>/dev/null)
+    print_status "Determining AWS region..."
+    # Try env vars first (don’t error if aws CLI returns non-zero)
+    AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
+
     if [ -z "$AWS_REGION" ]; then
-        print_error "AWS region not configured. Please set it with: aws configure set region <your-region>"
+        # Temporarily disable -e so a non-zero exit here doesn't kill the script
+        set +e
+        REG_FROM_CFG=$(aws configure get region 2>/dev/null)
+        rc=$?
+        set -e
+        if [ $rc -eq 0 ] && [ -n "$REG_FROM_CFG" ]; then
+            AWS_REGION="$REG_FROM_CFG"
+        fi
+    fi
+
+    echo "[DEBUG] AWS_REGION resolved to: '${AWS_REGION}'"
+
+    if [ -z "$AWS_REGION" ]; then
+        print_error "AWS region not configured. Set AWS_REGION or AWS_DEFAULT_REGION, or run: aws configure set region <your-region>"
         exit 1
     fi
     export AWS_REGION
 }
+
 
 # Function to check if command exists
 command_exists() {
