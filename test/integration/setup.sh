@@ -4,6 +4,7 @@
 # This script performs a complete setup of the crypto invoice system
 
 set -e  # Exit on any error
+trap 'print_error "Command failed: ${BASH_COMMAND} (exit $?) at line $LINENO"; exit 1' ERR
 
 # Colors for output
 RED='\033[0;31m'

@@ -461,7 +461,7 @@ rm -rf node_modules/ cdk.out/
    - Review Lambda function logs in CloudWatch
 
 2. **Payments Not Detected:**
-   - Ensure Watcher function is running (CloudWatch Events)
+   - Ensure Watcher function is running
    - Verify RPC node connectivity
    - Wait 1-2 minutes for detection cycle
 
