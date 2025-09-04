@@ -39,32 +39,6 @@ print_header() {
     echo -e "${BLUE}================================${NC}\n"
 }
 
-require_region() {
-    print_status "Determining AWS region..."
-    # Try env vars first (don’t error if aws CLI returns non-zero)
-    AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
-
-    if [ -z "$AWS_REGION" ]; then
-        # Temporarily disable -e so a non-zero exit here doesn't kill the script
-        set +e
-        REG_FROM_CFG=$(aws configure get region 2>/dev/null)
-        rc=$?
-        set -e
-        if [ $rc -eq 0 ] && [ -n "$REG_FROM_CFG" ]; then
-            AWS_REGION="$REG_FROM_CFG"
-        fi
-    fi
-
-    echo "[DEBUG] AWS_REGION resolved to: '${AWS_REGION}'"
-
-    if [ -z "$AWS_REGION" ]; then
-        print_error "AWS region not configured. Set AWS_REGION or AWS_DEFAULT_REGION, or run: aws configure set region <your-region>"
-        exit 1
-    fi
-    export AWS_REGION
-}
-
-
 # Function to check if command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -109,7 +83,12 @@ check_prerequisites() {
         # Check AWS credentials
         if aws sts get-caller-identity >/dev/null 2>&1; then
             AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-            require_region
+            AWS_REGION=$(aws configure get region)
+            if [ -z "$AWS_REGION" ]; then
+                AWS_REGION="$AWS_DEFAULT_REGION"
+            fi
+            export AWS_REGION
+            export AWS_DEFAULT_REGION="$AWS_REGION"
             print_success "AWS credentials configured - Account: $AWS_ACCOUNT, Region: $AWS_REGION"
         else
             print_error "AWS credentials not configured"
@@ -260,7 +239,8 @@ bootstrap_cdk() {
     cd "$PROJECT_ROOT"
     
     AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-    require_region
+    AWS_REGION=$(aws configure get region)
+    
     print_status "Checking if CDK is bootstrapped for account $AWS_ACCOUNT in region $AWS_REGION..."
     
     # Check if bootstrap stack exists
@@ -485,6 +465,7 @@ display_summary() {
     
     echo -e "\n${BLUE}📚 Additional Resources:${NC}"
     echo "• README.md - Detailed documentation"
+    echo "• INVOICE_MANAGEMENT_API.md - API documentation"
     echo "• test/integration/test-invoice-management-api.sh - API testing script"
     
     echo -e "\n${GREEN}✅ Setup completed successfully!${NC}"
