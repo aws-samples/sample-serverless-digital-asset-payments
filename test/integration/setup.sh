@@ -3,7 +3,10 @@
 # Crypto Invoice CDK - End-to-End Setup Script
 # This script performs a complete setup of the crypto invoice system
 
-set -e  # Exit on any error
+set -Eeuo pipefail
+shopt -s inherit_errexit 2>/dev/null || true
+
+trap 'print_error "Command failed: ${BASH_COMMAND} (exit $?) at line $LINENO"' ERR
 
 # Colors for output
 RED='\033[0;31m'
@@ -460,7 +463,6 @@ display_summary() {
     
     echo -e "\n${BLUE}📚 Additional Resources:${NC}"
     echo "• README.md - Detailed documentation"
-    echo "• INVOICE_MANAGEMENT_API.md - API documentation"
     echo "• test/integration/test-invoice-management-api.sh - API testing script"
     
     echo -e "\n${GREEN}✅ Setup completed successfully!${NC}"
