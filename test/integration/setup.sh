@@ -39,6 +39,16 @@ print_header() {
     echo -e "${BLUE}================================${NC}\n"
 }
 
+# Ensure AWS region is configured
+require_region() {
+    AWS_REGION=$(aws configure get region 2>/dev/null)
+    if [ -z "$AWS_REGION" ]; then
+        print_error "AWS region not configured. Please set it with: aws configure set region <your-region>"
+        exit 1
+    fi
+    export AWS_REGION
+}
+
 # Function to check if command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -83,14 +93,7 @@ check_prerequisites() {
         # Check AWS credentials
         if aws sts get-caller-identity >/dev/null 2>&1; then
             AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-            AWS_REGION=$(aws configure get region)
-            if [ -z "$AWS_REGION" ]; then
-                print_error "AWS region not configured"
-                missing_deps+=("aws-region")
-            else
-                print_success "AWS region configured: $AWS_REGION"
-            fi
-
+            require_region
             print_success "AWS credentials configured - Account: $AWS_ACCOUNT, Region: $AWS_REGION"
         else
             print_error "AWS credentials not configured"
@@ -241,11 +244,7 @@ bootstrap_cdk() {
     cd "$PROJECT_ROOT"
     
     AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-    AWS_REGION=$(aws configure get region)
-    if [ -z "$AWS_REGION" ]; then
-        print_error "AWS region not configured. Please set it with: aws configure set region <your-region>"
-        exit 1
-    fi
+    require_region
     print_status "Checking if CDK is bootstrapped for account $AWS_ACCOUNT in region $AWS_REGION..."
     
     # Check if bootstrap stack exists
