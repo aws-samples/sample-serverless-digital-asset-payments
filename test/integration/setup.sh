@@ -84,6 +84,13 @@ check_prerequisites() {
         if aws sts get-caller-identity >/dev/null 2>&1; then
             AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
             AWS_REGION=$(aws configure get region)
+            if [ -z "$AWS_REGION" ]; then
+                print_error "AWS region not configured"
+                missing_deps+=("aws-region")
+            else
+                print_success "AWS region configured: $AWS_REGION"
+            fi
+
             print_success "AWS credentials configured - Account: $AWS_ACCOUNT, Region: $AWS_REGION"
         else
             print_error "AWS credentials not configured"
@@ -235,7 +242,10 @@ bootstrap_cdk() {
     
     AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
     AWS_REGION=$(aws configure get region)
-    
+    if [ -z "$AWS_REGION" ]; then
+        print_error "AWS region not configured. Please set it with: aws configure set region <your-region>"
+        exit 1
+    fi
     print_status "Checking if CDK is bootstrapped for account $AWS_ACCOUNT in region $AWS_REGION..."
     
     # Check if bootstrap stack exists
@@ -460,7 +470,6 @@ display_summary() {
     
     echo -e "\n${BLUE}📚 Additional Resources:${NC}"
     echo "• README.md - Detailed documentation"
-    echo "• INVOICE_MANAGEMENT_API.md - API documentation"
     echo "• test/integration/test-invoice-management-api.sh - API testing script"
     
     echo -e "\n${GREEN}✅ Setup completed successfully!${NC}"
