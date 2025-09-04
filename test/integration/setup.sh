@@ -463,7 +463,6 @@ display_summary() {
     
     echo -e "\n${BLUE}📚 Additional Resources:${NC}"
     echo "• README.md - Detailed documentation"
-    echo "• INVOICE_MANAGEMENT_API.md - API documentation"
     echo "• test/integration/test-invoice-management-api.sh - API testing script"
     
     echo -e "\n${GREEN}✅ Setup completed successfully!${NC}"
