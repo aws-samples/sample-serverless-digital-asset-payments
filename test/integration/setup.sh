@@ -302,6 +302,40 @@ setup_secrets() {
     print_success "Secrets configured successfully!"
 }
 
+wait_for_api_ready() {
+  local url="$1"
+  local api_key="$2"
+  local max_wait="${3:-180}"   # seconds
+  local interval=5
+  local deadline=$((SECONDS + max_wait))
+
+  print_status "Waiting for API Gateway & API key to become active (up to ${max_wait}s)..."
+
+  while :; do
+    # Try a cheap POST; consider tiny amount to avoid creating noisy data
+    local http_code
+    http_code=$(curl -s -o /tmp/_apigw_body -w "%{http_code}" -X POST "$url" \
+      -H "Content-Type: application/json" \
+      -H "X-API-Key: $api_key" \
+      -d '{"currency":"ETH","amount":"0.00000001"}' || true)
+
+    # When propagation isn’t done yet, API Gateway often returns 403 Forbidden
+    if [ "$http_code" != "403" ]; then
+      print_success "API responded with HTTP $http_code — proceeding."
+      break
+    fi
+
+    if [ $SECONDS -ge $deadline ]; then
+      print_error "API Gateway still returning 403 after ${max_wait}s."
+      echo "Last body: $(cat /tmp/_apigw_body)"
+      return 1
+    fi
+
+    print_warning "API not ready yet (HTTP $http_code). Retrying in ${interval}s..."
+    sleep $interval
+  done
+}
+
 # Function to test the deployment
 test_deployment() {
     print_header "Testing Deployment"
@@ -323,7 +357,8 @@ test_deployment() {
         print_error "Could not retrieve Invoice API URL"
         return 1
     fi
-    
+    wait_for_api_ready "$INVOICE_API_URL" "$API_KEY_VALUE" 180
+
     print_status "Testing invoice generation API..."
     
     # Test ETH invoice creation
