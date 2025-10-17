@@ -215,6 +215,7 @@ exports.handler = async event => {
     } catch (err) {
       console.error(`Error sweeping invoice ${invoiceId}: ${err.message}`);
       await sendErrorNotification(err, invoiceId);
+      throw err;
     }
   }
 
