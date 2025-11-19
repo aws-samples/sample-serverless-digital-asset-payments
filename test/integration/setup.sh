@@ -314,20 +314,28 @@ wait_for_api_ready() {
   while :; do
     # Try a cheap POST; consider tiny amount to avoid creating noisy data
     local http_code
-    http_code=$(curl -s -o /tmp/_apigw_body -w "%{http_code}" -X POST "$url" \
+    local response_body
+    response_body=$(curl -s -w "%{http_code}" -X POST "$url" \
       -H "Content-Type: application/json" \
       -H "X-API-Key: $api_key" \
       -d '{"currency":"ETH","amount":"0.00000001"}' || true)
+    
+    http_code="${response_body: -3}"
+    response_body="${response_body%???}"
 
     # When propagation isn’t done yet, API Gateway often returns 403 Forbidden
     if [ "$http_code" != "403" ]; then
       print_success "API responded with HTTP $http_code — proceeding."
+      # Extract and return invoice ID if successful
+      if [ "$http_code" = "200" ] && echo "$response_body" | grep -q "invoiceId"; then
+        echo "$response_body" | grep -o '"invoiceId":"[^"]*"' | cut -d'"' -f4
+      fi
       break
     fi
 
     if [ $SECONDS -ge $deadline ]; then
       print_error "API Gateway still returning 403 after ${max_wait}s."
-      echo "Last body: $(cat /tmp/_apigw_body)"
+      echo "Last body: $response_body"
       return 1
     fi
 
@@ -361,12 +369,18 @@ test_deployment() {
         print_error "Could not retrieve Invoice API URL"
         return 1
     fi
-    wait_for_api_ready "$INVOICE_API_URL" "$API_KEY_VALUE" 180
+    WAIT_INVOICE_ID=$(wait_for_api_ready "$INVOICE_API_URL" "$API_KEY_VALUE" 180)
 
     print_status "Testing invoice generation API..."
     
     # Array to store test invoice IDs for cleanup
     TEST_INVOICE_IDS=()
+    
+    # Add wait invoice ID if it exists
+    if [ -n "$WAIT_INVOICE_ID" ]; then
+        TEST_INVOICE_IDS+=("$WAIT_INVOICE_ID")
+        print_status "Added wait invoice to cleanup: $WAIT_INVOICE_ID"
+    fi
     
     # Test ETH invoice creation
     ETH_RESPONSE=$(curl -s -X POST "$INVOICE_API_URL" \
