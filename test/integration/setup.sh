@@ -309,7 +309,7 @@ wait_for_api_ready() {
   local interval=5
   local deadline=$((SECONDS + max_wait))
 
-  print_status "Waiting for API Gateway & API key to become active (up to ${max_wait}s)..."
+  print_status "Waiting for API Gateway & API key to become active (up to ${max_wait}s)..." >&2
 
   while :; do
     # Try a cheap POST; consider tiny amount to avoid creating noisy data
@@ -325,7 +325,7 @@ wait_for_api_ready() {
 
     # When propagation isn’t done yet, API Gateway often returns 403 Forbidden
     if [ "$http_code" != "403" ]; then
-      print_success "API responded with HTTP $http_code — proceeding."
+      print_success "API responded with HTTP $http_code — proceeding." >&2
       # Extract and return invoice ID if successful
       if [ "$http_code" = "200" ] && echo "$response_body" | grep -q "invoiceId"; then
         echo "$response_body" | grep -o '"invoiceId":"[^"]*"' | cut -d'"' -f4
@@ -334,12 +334,12 @@ wait_for_api_ready() {
     fi
 
     if [ $SECONDS -ge $deadline ]; then
-      print_error "API Gateway still returning 403 after ${max_wait}s."
-      echo "Last body: $response_body"
+      print_error "API Gateway still returning 403 after ${max_wait}s." >&2
+      echo "Last body: $response_body" >&2
       return 1
     fi
 
-    print_warning "API not ready yet (HTTP $http_code). Retrying in ${interval}s..."
+    print_warning "API not ready yet (HTTP $http_code). Retrying in ${interval}s..." >&2
     sleep $interval
   done
 }
@@ -493,11 +493,14 @@ cleanup_test_invoices() {
         print_status "Deleting test invoice: $invoice_id"
         
         # Delete the invoice
+        print_status "Attempting DELETE: ${INVOICE_API_BASE_URL}invoices/$invoice_id"
         DELETE_RESPONSE=$(curl -s -w "%{http_code}" -X DELETE "${INVOICE_API_BASE_URL}invoices/$invoice_id" \
             -H "X-API-Key: $API_KEY_VALUE" 2>/dev/null || echo "000")
         
         HTTP_CODE="${DELETE_RESPONSE: -3}"
         RESPONSE_BODY="${DELETE_RESPONSE%???}"
+        
+        print_status "Delete response: HTTP $HTTP_CODE, Body: $RESPONSE_BODY"
         
         if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
             print_success "Successfully deleted invoice: $invoice_id"
