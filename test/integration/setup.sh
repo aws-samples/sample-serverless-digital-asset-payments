@@ -479,7 +479,7 @@ cleanup_test_invoices() {
         print_status "Deleting test invoice: $invoice_id"
         
         # Delete the invoice
-        DELETE_RESPONSE=$(curl -s -X DELETE "$INVOICE_API_BASE_URL/invoices/$invoice_id" \
+        DELETE_RESPONSE=$(curl -s -X DELETE "${INVOICE_API_BASE_URL}invoices/$invoice_id" \
             -H "X-API-Key: $API_KEY_VALUE" 2>/dev/null || echo '{"error": "delete failed"}')
         
         if echo "$DELETE_RESPONSE" | grep -q '"message".*"deleted"'; then
