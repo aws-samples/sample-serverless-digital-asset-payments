@@ -479,13 +479,16 @@ cleanup_test_invoices() {
         print_status "Deleting test invoice: $invoice_id"
         
         # Delete the invoice
-        DELETE_RESPONSE=$(curl -s -X DELETE "${INVOICE_API_BASE_URL}invoices/$invoice_id" \
-            -H "X-API-Key: $API_KEY_VALUE" 2>/dev/null || echo '{"error": "delete failed"}')
+        DELETE_RESPONSE=$(curl -s -w "%{http_code}" -X DELETE "${INVOICE_API_BASE_URL}invoices/$invoice_id" \
+            -H "X-API-Key: $API_KEY_VALUE" 2>/dev/null || echo "000")
         
-        if echo "$DELETE_RESPONSE" | grep -q '"message".*"deleted"'; then
+        HTTP_CODE="${DELETE_RESPONSE: -3}"
+        RESPONSE_BODY="${DELETE_RESPONSE%???}"
+        
+        if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
             print_success "Successfully deleted invoice: $invoice_id"
         else
-            print_warning "Could not delete invoice $invoice_id (may already be deleted or in non-deletable state)"
+            print_warning "Could not delete invoice $invoice_id (HTTP $HTTP_CODE: may already be deleted or in non-deletable state)"
         fi
     done
     
