@@ -353,6 +353,10 @@ test_deployment() {
     INVOICE_API_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
         --query "Stacks[0].Outputs[?OutputKey=='InvoiceApiUrl'].OutputValue" --output text)
     
+    # Get API Base URL for cleanup
+    INVOICE_API_BASE_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+        --query "Stacks[0].Outputs[?OutputKey=='InvoiceApiBaseUrl'].OutputValue" --output text)
+    
     if [ -z "$INVOICE_API_URL" ]; then
         print_error "Could not retrieve Invoice API URL"
         return 1
@@ -360,6 +364,9 @@ test_deployment() {
     wait_for_api_ready "$INVOICE_API_URL" "$API_KEY_VALUE" 180
 
     print_status "Testing invoice generation API..."
+    
+    # Array to store test invoice IDs for cleanup
+    TEST_INVOICE_IDS=()
     
     # Test ETH invoice creation
     ETH_RESPONSE=$(curl -s -X POST "$INVOICE_API_URL" \
@@ -373,6 +380,7 @@ test_deployment() {
     if echo "$ETH_RESPONSE" | grep -q "invoiceId"; then
         print_success "ETH invoice creation test passed"
         ETH_INVOICE_ID=$(echo "$ETH_RESPONSE" | grep -o '"invoiceId":"[^"]*"' | cut -d'"' -f4)
+        TEST_INVOICE_IDS+=("$ETH_INVOICE_ID")
         print_status "Created ETH invoice: $ETH_INVOICE_ID"
     else
         print_error "ETH invoice creation test failed"
@@ -395,10 +403,31 @@ test_deployment() {
     if echo "$ERC20_RESPONSE" | grep -q "invoiceId"; then
         print_success "ERC20 invoice creation test passed"
         ERC20_INVOICE_ID=$(echo "$ERC20_RESPONSE" | grep -o '"invoiceId":"[^"]*"' | cut -d'"' -f4)
+        TEST_INVOICE_IDS+=("$ERC20_INVOICE_ID")
         print_status "Created ERC20 invoice: $ERC20_INVOICE_ID"
     else
         print_error "ERC20 invoice creation test failed"
         echo "Response: $ERC20_RESPONSE"
+        return 1
+    fi
+    
+    # Test third invoice for comprehensive testing
+    THIRD_RESPONSE=$(curl -s -X POST "$INVOICE_API_URL" \
+        -H "Content-Type: application/json" \
+        -H "X-API-Key: $API_KEY_VALUE" \
+        -d '{
+            "currency": "ETH",
+            "amount": "0.0002"
+        }')
+    
+    if echo "$THIRD_RESPONSE" | grep -q "invoiceId"; then
+        print_success "Third invoice creation test passed"
+        THIRD_INVOICE_ID=$(echo "$THIRD_RESPONSE" | grep -o '"invoiceId":"[^"]*"' | cut -d'"' -f4)
+        TEST_INVOICE_IDS+=("$THIRD_INVOICE_ID")
+        print_status "Created third invoice: $THIRD_INVOICE_ID"
+    else
+        print_error "Third invoice creation test failed"
+        echo "Response: $THIRD_RESPONSE"
         return 1
     fi
     
@@ -430,6 +459,37 @@ test_deployment() {
     fi
     
     print_success "All deployment tests passed!"
+    
+    # Clean up test invoices
+    cleanup_test_invoices "${TEST_INVOICE_IDS[@]}"
+}
+
+# Function to clean up test invoices
+cleanup_test_invoices() {
+    local invoice_ids=("$@")
+    
+    if [ ${#invoice_ids[@]} -eq 0 ]; then
+        print_status "No test invoices to clean up"
+        return 0
+    fi
+    
+    print_header "Cleaning Up Test Invoices"
+    
+    for invoice_id in "${invoice_ids[@]}"; do
+        print_status "Deleting test invoice: $invoice_id"
+        
+        # Delete the invoice
+        DELETE_RESPONSE=$(curl -s -X DELETE "$INVOICE_API_BASE_URL/invoices/$invoice_id" \
+            -H "X-API-Key: $API_KEY_VALUE" 2>/dev/null || echo '{"error": "delete failed"}')
+        
+        if echo "$DELETE_RESPONSE" | grep -q '"message".*"deleted"'; then
+            print_success "Successfully deleted invoice: $invoice_id"
+        else
+            print_warning "Could not delete invoice $invoice_id (may already be deleted or in non-deletable state)"
+        fi
+    done
+    
+    print_success "Test invoice cleanup completed!"
 }
 
 # Function to setup SNS subscription (optional)
