@@ -231,6 +231,7 @@ export class CryptoInvoiceStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       memorySize: 256,
       timeout: cdk.Duration.minutes(15),
+      reservedConcurrentExecutions: 1,
       logGroup: new logs.LogGroup(this, 'SweeperFunctionLogGroup', {
         retention: logs.RetentionDays.ONE_MONTH,
         removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -253,7 +254,7 @@ export class CryptoInvoiceStack extends cdk.Stack {
         startingPosition: lambda.StartingPosition.LATEST,
         batchSize: 1,
         retryAttempts: 3,
-        parallelizationFactor: 10,
+        parallelizationFactor: 1,
         reportBatchItemFailures: true,
         filters: [
           lambda.FilterCriteria.filter({

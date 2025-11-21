@@ -309,29 +309,37 @@ wait_for_api_ready() {
   local interval=5
   local deadline=$((SECONDS + max_wait))
 
-  print_status "Waiting for API Gateway & API key to become active (up to ${max_wait}s)..."
+  print_status "Waiting for API Gateway & API key to become active (up to ${max_wait}s)..." >&2
 
   while :; do
     # Try a cheap POST; consider tiny amount to avoid creating noisy data
     local http_code
-    http_code=$(curl -s -o /tmp/_apigw_body -w "%{http_code}" -X POST "$url" \
+    local response_body
+    response_body=$(curl -s -w "%{http_code}" -X POST "$url" \
       -H "Content-Type: application/json" \
       -H "X-API-Key: $api_key" \
       -d '{"currency":"ETH","amount":"0.00000001"}' || true)
+    
+    http_code="${response_body: -3}"
+    response_body="${response_body%???}"
 
     # When propagation isn’t done yet, API Gateway often returns 403 Forbidden
     if [ "$http_code" != "403" ]; then
-      print_success "API responded with HTTP $http_code — proceeding."
+      print_success "API responded with HTTP $http_code — proceeding." >&2
+      # Extract and return invoice ID if successful
+      if [ "$http_code" = "200" ] && echo "$response_body" | grep -q "invoiceId"; then
+        echo "$response_body" | grep -o '"invoiceId":"[^"]*"' | cut -d'"' -f4
+      fi
       break
     fi
 
     if [ $SECONDS -ge $deadline ]; then
-      print_error "API Gateway still returning 403 after ${max_wait}s."
-      echo "Last body: $(cat /tmp/_apigw_body)"
+      print_error "API Gateway still returning 403 after ${max_wait}s." >&2
+      echo "Last body: $response_body" >&2
       return 1
     fi
 
-    print_warning "API not ready yet (HTTP $http_code). Retrying in ${interval}s..."
+    print_warning "API not ready yet (HTTP $http_code). Retrying in ${interval}s..." >&2
     sleep $interval
   done
 }
@@ -353,13 +361,26 @@ test_deployment() {
     INVOICE_API_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
         --query "Stacks[0].Outputs[?OutputKey=='InvoiceApiUrl'].OutputValue" --output text)
     
+    # Get API Base URL for cleanup
+    INVOICE_API_BASE_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+        --query "Stacks[0].Outputs[?OutputKey=='InvoiceApiBaseUrl'].OutputValue" --output text)
+    
     if [ -z "$INVOICE_API_URL" ]; then
         print_error "Could not retrieve Invoice API URL"
         return 1
     fi
-    wait_for_api_ready "$INVOICE_API_URL" "$API_KEY_VALUE" 180
+    WAIT_INVOICE_ID=$(wait_for_api_ready "$INVOICE_API_URL" "$API_KEY_VALUE" 180)
 
     print_status "Testing invoice generation API..."
+    
+    # Array to store test invoice IDs for cleanup
+    TEST_INVOICE_IDS=()
+    
+    # Add wait invoice ID if it exists
+    if [ -n "$WAIT_INVOICE_ID" ]; then
+        TEST_INVOICE_IDS+=("$WAIT_INVOICE_ID")
+        print_status "Added wait invoice to cleanup: $WAIT_INVOICE_ID"
+    fi
     
     # Test ETH invoice creation
     ETH_RESPONSE=$(curl -s -X POST "$INVOICE_API_URL" \
@@ -373,6 +394,7 @@ test_deployment() {
     if echo "$ETH_RESPONSE" | grep -q "invoiceId"; then
         print_success "ETH invoice creation test passed"
         ETH_INVOICE_ID=$(echo "$ETH_RESPONSE" | grep -o '"invoiceId":"[^"]*"' | cut -d'"' -f4)
+        TEST_INVOICE_IDS+=("$ETH_INVOICE_ID")
         print_status "Created ETH invoice: $ETH_INVOICE_ID"
     else
         print_error "ETH invoice creation test failed"
@@ -395,10 +417,31 @@ test_deployment() {
     if echo "$ERC20_RESPONSE" | grep -q "invoiceId"; then
         print_success "ERC20 invoice creation test passed"
         ERC20_INVOICE_ID=$(echo "$ERC20_RESPONSE" | grep -o '"invoiceId":"[^"]*"' | cut -d'"' -f4)
+        TEST_INVOICE_IDS+=("$ERC20_INVOICE_ID")
         print_status "Created ERC20 invoice: $ERC20_INVOICE_ID"
     else
         print_error "ERC20 invoice creation test failed"
         echo "Response: $ERC20_RESPONSE"
+        return 1
+    fi
+    
+    # Test third invoice for comprehensive testing
+    THIRD_RESPONSE=$(curl -s -X POST "$INVOICE_API_URL" \
+        -H "Content-Type: application/json" \
+        -H "X-API-Key: $API_KEY_VALUE" \
+        -d '{
+            "currency": "ETH",
+            "amount": "0.0002"
+        }')
+    
+    if echo "$THIRD_RESPONSE" | grep -q "invoiceId"; then
+        print_success "Third invoice creation test passed"
+        THIRD_INVOICE_ID=$(echo "$THIRD_RESPONSE" | grep -o '"invoiceId":"[^"]*"' | cut -d'"' -f4)
+        TEST_INVOICE_IDS+=("$THIRD_INVOICE_ID")
+        print_status "Created third invoice: $THIRD_INVOICE_ID"
+    else
+        print_error "Third invoice creation test failed"
+        echo "Response: $THIRD_RESPONSE"
         return 1
     fi
     
@@ -430,6 +473,40 @@ test_deployment() {
     fi
     
     print_success "All deployment tests passed!"
+    
+    # Clean up test invoices
+    cleanup_test_invoices "${TEST_INVOICE_IDS[@]}"
+}
+
+# Function to clean up test invoices
+cleanup_test_invoices() {
+    local invoice_ids=("$@")
+    
+    if [ ${#invoice_ids[@]} -eq 0 ]; then
+        print_status "No test invoices to clean up"
+        return 0
+    fi
+    
+    print_header "Cleaning Up Test Invoices"
+    
+    for invoice_id in "${invoice_ids[@]}"; do
+        print_status "Deleting test invoice: $invoice_id"
+        
+        # Delete the invoice
+        DELETE_RESPONSE=$(curl -s -w "%{http_code}" -X DELETE "${INVOICE_API_BASE_URL}invoices/$invoice_id" \
+            -H "X-API-Key: $API_KEY_VALUE" 2>/dev/null || echo "000")
+        
+        HTTP_CODE="${DELETE_RESPONSE: -3}"
+        RESPONSE_BODY="${DELETE_RESPONSE%???}"
+        
+        if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+            print_success "Successfully deleted invoice: $invoice_id"
+        else
+            print_warning "Could not delete invoice $invoice_id (HTTP $HTTP_CODE: may already be deleted or in non-deletable state)"
+        fi
+    done
+    
+    print_success "Test invoice cleanup completed!"
 }
 
 # Function to setup SNS subscription (optional)
