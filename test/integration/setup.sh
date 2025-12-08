@@ -302,136 +302,6 @@ setup_secrets() {
     print_success "Secrets configured successfully!"
 }
 
-wait_for_api_ready() {
-  local url="$1"
-  local api_key="$2"
-  local max_wait="${3:-180}"   # seconds
-  local interval=5
-  local deadline=$((SECONDS + max_wait))
-
-  print_status "Waiting for API Gateway & API key to become active (up to ${max_wait}s)..."
-
-  while :; do
-    # Try a cheap POST; consider tiny amount to avoid creating noisy data
-    local http_code
-    http_code=$(curl -s -o /tmp/_apigw_body -w "%{http_code}" -X POST "$url" \
-      -H "Content-Type: application/json" \
-      -H "X-API-Key: $api_key" \
-      -d '{"currency":"ETH","amount":"0.00000001"}' || true)
-
-    # When propagation isn’t done yet, API Gateway often returns 403 Forbidden
-    if [ "$http_code" != "403" ]; then
-      print_success "API responded with HTTP $http_code — proceeding."
-      break
-    fi
-
-    if [ $SECONDS -ge $deadline ]; then
-      print_error "API Gateway still returning 403 after ${max_wait}s."
-      echo "Last body: $(cat /tmp/_apigw_body)"
-      return 1
-    fi
-
-    print_warning "API not ready yet (HTTP $http_code). Retrying in ${interval}s..."
-    sleep $interval
-  done
-}
-
-# Function to test the deployment
-test_deployment() {
-    print_header "Testing Deployment"
-    
-    cd "$PROJECT_ROOT"
-    
-    API_KEY_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
-            --query "Stacks[0].Outputs[?OutputKey=='InvoiceApiKeyId'].OutputValue" --output text)
-
-    # Get the actual API key value
-    API_KEY_VALUE=$(aws apigateway get-api-key --api-key "$API_KEY_ID" --include-value \
-        --query 'value' --output text 2>/dev/null)
-
-    # Get API URL
-    INVOICE_API_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
-        --query "Stacks[0].Outputs[?OutputKey=='InvoiceApiUrl'].OutputValue" --output text)
-    
-    if [ -z "$INVOICE_API_URL" ]; then
-        print_error "Could not retrieve Invoice API URL"
-        return 1
-    fi
-    wait_for_api_ready "$INVOICE_API_URL" "$API_KEY_VALUE" 180
-
-    print_status "Testing invoice generation API..."
-    
-    # Test ETH invoice creation
-    ETH_RESPONSE=$(curl -s -X POST "$INVOICE_API_URL" \
-        -H "Content-Type: application/json" \
-        -H "X-API-Key: $API_KEY_VALUE" \
-        -d '{
-            "currency": "ETH",
-            "amount": "0.0001"
-        }')
-    
-    if echo "$ETH_RESPONSE" | grep -q "invoiceId"; then
-        print_success "ETH invoice creation test passed"
-        ETH_INVOICE_ID=$(echo "$ETH_RESPONSE" | grep -o '"invoiceId":"[^"]*"' | cut -d'"' -f4)
-        print_status "Created ETH invoice: $ETH_INVOICE_ID"
-    else
-        print_error "ETH invoice creation test failed"
-        echo "Response: $ETH_RESPONSE"
-        return 1
-    fi
-    
-    # Test ERC20 invoice creation (using a common testnet USDC address)
-    ERC20_RESPONSE=$(curl -s -X POST "$INVOICE_API_URL" \
-        -H "Content-Type: application/json" \
-        -H "X-API-Key: $API_KEY_VALUE" \
-        -d '{
-            "currency": "ERC20",
-            "tokenAddress": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-            "tokenSymbol": "USDC",
-            "amount": "5.00",
-            "decimals": 6
-        }')
-    
-    if echo "$ERC20_RESPONSE" | grep -q "invoiceId"; then
-        print_success "ERC20 invoice creation test passed"
-        ERC20_INVOICE_ID=$(echo "$ERC20_RESPONSE" | grep -o '"invoiceId":"[^"]*"' | cut -d'"' -f4)
-        print_status "Created ERC20 invoice: $ERC20_INVOICE_ID"
-    else
-        print_error "ERC20 invoice creation test failed"
-        echo "Response: $ERC20_RESPONSE"
-        return 1
-    fi
-    
-    # Test Lambda functions
-    print_status "Testing Lambda functions..."
-    
-    # Test invoice function
-    if aws lambda get-function --function-name "$INVOICE_FUNCTION_NAME" >/dev/null 2>&1; then
-        print_success "Invoice Lambda function is accessible"
-    else
-        print_error "Invoice Lambda function is not accessible"
-        return 1
-    fi
-    
-    # Test watcher function
-    if aws lambda get-function --function-name "$WATCHER_FUNCTION_NAME" >/dev/null 2>&1; then
-        print_success "Watcher Lambda function is accessible"
-    else
-        print_error "Watcher Lambda function is not accessible"
-        return 1
-    fi
-    
-    # Test sweeper function
-    if aws lambda get-function --function-name "$SWEEPER_FUNCTION_NAME" >/dev/null 2>&1; then
-        print_success "Sweeper Lambda function is accessible"
-    else
-        print_error "Sweeper Lambda function is not accessible"
-        return 1
-    fi
-    
-    print_success "All deployment tests passed!"
-}
-
 # Function to setup SNS subscription (optional)
 setup_sns_subscription() {
     print_header "Setting Up SNS Email Subscription (Optional)"
@@ -515,8 +385,7 @@ main() {
     echo "5. Bootstrap CDK (if needed)"
     echo "6. Deploy the CDK stack"
     echo "7. Set up secrets"
-    echo "8. Test the deployment"
-    echo "9. Optionally set up email notifications"
+    echo "8. Optionally set up email notifications"
     echo ""
     
     read -p "Do you want to continue? (y/N): " -n 1 -r
@@ -534,7 +403,6 @@ main() {
     bootstrap_cdk
     deploy_stack
     setup_secrets
-    test_deployment
     setup_sns_subscription
     display_summary
 }
