@@ -58,14 +58,14 @@ This error may require manual intervention to ensure funds are properly swept.
 }
 
 async function ensureSufficientGas(
-  userWallet,
+  invoiceWallet,
   hotWallet,
   estimatedFee,
   gasPrice,
   invoiceId,
   currency
 ) {
-  let ethBalance = await provider.getBalance(userWallet.address);
+  let ethBalance = await provider.getBalance(invoiceWallet.address);
 
   if (ethBalance < estimatedFee) {
     console.log(
@@ -76,13 +76,13 @@ async function ensureSufficientGas(
     console.log(`Topping up ${ethers.formatEther(topUpAmount)} ETH for ${currency} sweep...`);
 
     const topUpTx = await hotWallet.sendTransaction({
-      to: userWallet.address,
+      to: invoiceWallet.address,
       value: topUpAmount,
       gasPrice: bufferedGasPrice,
     });
     await topUpTx.wait();
 
-    ethBalance = await provider.getBalance(userWallet.address);
+    ethBalance = await provider.getBalance(invoiceWallet.address);
   }
 
   return ethBalance;
@@ -117,11 +117,11 @@ exports.handler = async event => {
     }
 
     const { path, currency, tokenAddress, invoiceId, tokenSymbol } = newImage;
-    const userWallet = ethers.HDNodeWallet.fromPhrase(mnemonic, path).connect(provider);
+    const invoiceWallet = ethers.HDNodeWallet.fromPhrase(mnemonic, path).connect(provider);
 
     try {
       console.log(
-        `Processing invoice ${invoiceId} | Address: ${userWallet.address} | Currency: ${currency}`
+        `Processing invoice ${invoiceId} | Address: ${invoiceWallet.address} | Currency: ${currency}`
       );
 
       const feeData = await provider.getFeeData();
@@ -135,12 +135,12 @@ exports.handler = async event => {
           value: 0n,
         };
 
-        estimatedGas = await provider.estimateGas({ ...txRequest, from: userWallet.address });
+        estimatedGas = await provider.estimateGas({ ...txRequest, from: invoiceWallet.address });
         estimatedGas = addGasBuffer(estimatedGas);
         estimatedFee = estimatedGas * gasPrice;
 
         const ethBalance = await ensureSufficientGas(
-          userWallet,
+          invoiceWallet,
           hotWallet,
           estimatedFee,
           gasPrice,
@@ -150,7 +150,7 @@ exports.handler = async event => {
 
         const sweepAmount = ethBalance - estimatedFee;
 
-        const tx = await userWallet.sendTransaction({
+        const tx = await invoiceWallet.sendTransaction({
           to: DEPOSIT_WALLET_ADDRESS,
           value: sweepAmount,
           gasLimit: estimatedGas,
@@ -160,8 +160,8 @@ exports.handler = async event => {
         await tx.wait();
         console.log(`Full ETH sweep complete: ${ethers.formatEther(sweepAmount)} ETH`);
       } else {
-        const token = new ethers.Contract(tokenAddress, ERC20_ABI, userWallet);
-        const tokenBalance = await token.balanceOf(userWallet.address);
+        const token = new ethers.Contract(tokenAddress, ERC20_ABI, invoiceWallet);
+        const tokenBalance = await token.balanceOf(invoiceWallet.address);
 
         if (tokenBalance === 0n) {
           console.log(`No ${tokenSymbol} balance to sweep for invoice ${invoiceId}`);
@@ -171,12 +171,12 @@ exports.handler = async event => {
         const txRequest = await token
           .getFunction('transfer')
           .populateTransaction(DEPOSIT_WALLET_ADDRESS, tokenBalance);
-        estimatedGas = await provider.estimateGas({ ...txRequest, from: userWallet.address });
+        estimatedGas = await provider.estimateGas({ ...txRequest, from: invoiceWallet.address });
         estimatedGas = addGasBuffer(estimatedGas);
         estimatedFee = estimatedGas * gasPrice;
 
         await ensureSufficientGas(
-          userWallet,
+          invoiceWallet,
           hotWallet,
           estimatedFee,
           gasPrice,
