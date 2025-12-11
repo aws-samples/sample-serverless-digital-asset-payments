@@ -24,7 +24,17 @@ MNEMONIC_SECRET=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" 
 HOT_PK_SECRET=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
   --query "Stacks[0].Outputs[?OutputKey=='SolanaWalletHotPkSecretName'].OutputValue" --output text)
 
+if [ -z "$MNEMONIC_SECRET" ] || [ -z "$HOT_PK_SECRET" ]; then
+  echo "❌ Error: Could not fetch secret names from stack. Make sure the stack is deployed."
+  exit 1
+fi
+
 AWS_REGION=$(aws configure get region)
+
+if [ -z "$AWS_REGION" ]; then
+  echo "❌ Error: AWS region not configured. Run 'aws configure' first."
+  exit 1
+fi
 
 echo "📝 Generating new Solana mnemonic..."
 MNEMONIC=$(node -e "const bip39 = require('bip39'); console.log(bip39.generateMnemonic());")
