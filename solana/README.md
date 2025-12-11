@@ -61,7 +61,7 @@ Fund with SOL:
 - Paste hot wallet address and request airdrop
 - Paste payer address and request airdrop
 
-Fund with USDC (devnet mint: `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`):
+Fund with USDC:
 - Visit https://faucet.circle.com
 - Select "Solana Devnet"
 - Paste payer address
