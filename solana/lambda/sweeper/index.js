@@ -12,7 +12,6 @@ const {
   getAccount,
   getAssociatedTokenAddress,
   createTransferInstruction,
-  createAssociatedTokenAccountInstruction,
 } = require('@solana/spl-token');
 const { derivePath } = require('ed25519-hd-key');
 const { mnemonicToSeedSync } = require('bip39');

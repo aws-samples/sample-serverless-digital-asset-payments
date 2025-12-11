@@ -1,5 +1,5 @@
 const AWS = require('aws-sdk');
-const { Keypair, PublicKey } = require('@solana/web3.js');
+const { Keypair } = require('@solana/web3.js');
 const { derivePath } = require('ed25519-hd-key');
 const { mnemonicToSeedSync } = require('bip39');
 const { v4: uuidv4 } = require('uuid');
