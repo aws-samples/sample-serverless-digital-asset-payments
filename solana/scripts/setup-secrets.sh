@@ -81,7 +81,3 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "✅ Secrets successfully stored in AWS Secrets Manager"
-echo ""
-echo "🔑 Mnemonic (save this securely): $MNEMONIC"
-echo ""
-echo "⚠️  IMPORTANT: Store this mnemonic in a secure location. It cannot be recovered from AWS."
