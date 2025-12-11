@@ -6,7 +6,8 @@ This solution supports native (i.e ETH) and ERC20 token payments on _any_
 EVM-compatible blockchain with automated payment detection and fund sweeping
 capabilities.
 
-> **Note:** Looking for Solana support? Check out the [Solana implementation](solana/).
+> **Note:** Looking for Solana support? Check out the
+> [Solana implementation](non-evm-deployments/solana/).
 
 ## Table of Contents
 

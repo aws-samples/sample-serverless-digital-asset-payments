@@ -51,7 +51,7 @@ uses Solana-specific libraries and transaction structures:
 ## Quick Start
 
 ```bash
-cd sample-serverless-digital-asset-payments/solana
+cd sample-serverless-digital-asset-payments/non-evm-deployments/solana
 npm install
 npm run generate-wallets  # Outputs addresses to fund
 # Fund wallets (see output from generate-wallets)
@@ -66,7 +66,7 @@ npm run setup-secrets
 ### 1. Install Dependencies
 
 ```bash
-cd sample-serverless-digital-asset-payments/solana
+cd sample-serverless-digital-asset-payments/non-evm-deployments/solana
 npm install
 ```
 
