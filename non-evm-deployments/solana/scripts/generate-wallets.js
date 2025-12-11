@@ -17,8 +17,8 @@ console.log('  ⚠️  Save the private key securely if needed for testing\n');
 const hotWalletKeypair = Keypair.generate();
 const hotWalletPublicKey = hotWalletKeypair.publicKey.toBase58();
 const hotWalletPrivateKey = bs58.default
-    ? bs58.default.encode(hotWalletKeypair.secretKey)
-    : Buffer.from(hotWalletKeypair.secretKey).toString('base64');
+  ? bs58.default.encode(hotWalletKeypair.secretKey)
+  : Buffer.from(hotWalletKeypair.secretKey).toString('base64');
 
 console.log('Hot Wallet (Gas Top-ups):');
 console.log('  Public Key:', hotWalletPublicKey);
@@ -29,8 +29,8 @@ console.log('  ⚠️  Fund this wallet with devnet SOL: https://faucet.solana.c
 const payerKeypair = Keypair.generate();
 const payerPublicKey = payerKeypair.publicKey.toBase58();
 const payerPrivateKey = bs58.default
-    ? bs58.default.encode(payerKeypair.secretKey)
-    : Buffer.from(payerKeypair.secretKey).toString('base64');
+  ? bs58.default.encode(payerKeypair.secretKey)
+  : Buffer.from(payerKeypair.secretKey).toString('base64');
 
 console.log('Test Payer Wallet (For Testing):');
 console.log('  Public Key:', payerPublicKey);
