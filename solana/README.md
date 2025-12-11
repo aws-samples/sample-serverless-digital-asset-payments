@@ -144,13 +144,6 @@ curl -X POST "${API_URL}generateInvoice" \
   }'
 ```
 
-### Get Invoice
-
-```bash
-curl -X GET "${API_URL}invoices/{invoiceId}" \
-  -H "X-API-Key: $API_KEY"
-```
-
 ## Testing Payments
 
 ### Automated Test Scripts
@@ -169,9 +162,6 @@ Test complete payment flow (create invoice → send payment → verify):
 
 # Test USDC payment with custom amount
 ./scripts/test-spl-payment.sh 5.00
-
-# Test custom SPL token
-./scripts/test-spl-payment.sh 10.00 <TOKEN_MINT> <TOKEN_SYMBOL>
 ```
 
 ### Manual Payment Scripts
