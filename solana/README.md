@@ -1,6 +1,7 @@
 # Processing Solana Digital Asset Payments on AWS
 
-This is a Solana-specific implementation of the serverless digital asset payment system, based on the EVM-compatible blueprint.
+This is a Solana-specific implementation of the serverless digital asset payment
+system, based on the EVM-compatible blueprint.
 
 ## Table of Contents
 
@@ -23,7 +24,8 @@ This is a Solana-specific implementation of the serverless digital asset payment
 
 ## Architecture
 
-The Solana implementation follows the same architecture as the EVM version but uses Solana-specific libraries and transaction structures:
+The Solana implementation follows the same architecture as the EVM version but
+uses Solana-specific libraries and transaction structures:
 
 - **Native SOL payments** instead of ETH
 - **SPL tokens** instead of ERC20
@@ -33,10 +35,12 @@ The Solana implementation follows the same architecture as the EVM version but u
 ## Key Differences from EVM Implementation
 
 1. **Wallet Derivation**: Uses BIP44 path `m/44'/501'/x'/0'` for Solana
-2. **Transaction Structure**: Solana transactions with instructions vs Ethereum transactions
+2. **Transaction Structure**: Solana transactions with instructions vs Ethereum
+   transactions
 3. **Token Standard**: SPL tokens vs ERC20
 4. **Gas Model**: Lamports for rent/fees vs gas in Wei
-5. **Account Model**: Solana's account-based model with Associated Token Accounts
+5. **Account Model**: Solana's account-based model with Associated Token
+   Accounts
 
 ## Prerequisites
 
@@ -72,18 +76,22 @@ npm install
 npm run generate-wallets
 ```
 
-Creates treasury, hot, and test payer wallets, populating `.env` automatically. The script outputs all wallet addresses and funding instructions.
+Creates treasury, hot, and test payer wallets, populating `.env` automatically.
+The script outputs all wallet addresses and funding instructions.
 
 ### 3. Fund Wallets
 
-Use the addresses from the `generate-wallets` output (or run `npm run wallet-info` to see them again):
+Use the addresses from the `generate-wallets` output (or run
+`npm run wallet-info` to see them again):
 
 Fund with SOL:
+
 - Visit https://faucet.solana.com
 - Paste hot wallet address and request airdrop
 - Paste payer address and request airdrop
 
 Fund with USDC:
+
 - Visit https://faucet.circle.com
 - Select "Solana Devnet"
 - Paste payer address
@@ -179,7 +187,8 @@ node scripts/send-payment.js <INVOICE_ADDRESS> <AMOUNT_SOL>
 node scripts/send-spl-payment.js <INVOICE_ADDRESS> <AMOUNT> <TOKEN_MINT>
 ```
 
-**Note:** Payer private key is automatically read from `SOLANA_PAYER_PRIVATE_KEY` in `.env`.
+**Note:** Payer private key is automatically read from
+`SOLANA_PAYER_PRIVATE_KEY` in `.env`.
 
 ### Monitor Invoice Status
 
@@ -191,18 +200,19 @@ curl -X GET "${API_URL}invoices/{invoiceId}" \
 # Watch for status changes: pending → paid → swept
 ```
 
-
 ## API Reference
 
 ### POST /generateInvoice
 
 **Request Body:**
+
 - `currency`: "SOL" or "SPL"
 - `amount`: Payment amount as string
 - `tokenMint`: (Required for SPL) Token mint address
 - `tokenSymbol`: (Required for SPL) Token symbol
 
 **Response:**
+
 ```json
 {
   "invoiceId": "uuid",
@@ -214,7 +224,8 @@ curl -X GET "${API_URL}invoices/{invoiceId}" \
 
 ### Invoice Management Endpoints
 
-- **GET** `/invoices` - List all invoices (with optional `?status=pending` filter)
+- **GET** `/invoices` - List all invoices (with optional `?status=pending`
+  filter)
 - **GET** `/invoices/{invoiceId}` - Get specific invoice
 - **PUT** `/invoices/{invoiceId}` - Update invoice status
 - **DELETE** `/invoices/{invoiceId}` - Delete pending invoice
@@ -222,9 +233,11 @@ curl -X GET "${API_URL}invoices/{invoiceId}" \
 ## Payment Flow
 
 1. **Invoice Creation**: Generate unique Solana address via HD wallet derivation
-2. **Payment Monitoring**: Watcher Lambda checks for SOL/SPL token payments every minute
+2. **Payment Monitoring**: Watcher Lambda checks for SOL/SPL token payments
+   every minute
 3. **Payment Detection**: Mark invoice as "paid" when funds received
-4. **Fund Sweeping**: Sweeper Lambda automatically transfers funds to treasury wallet
+4. **Fund Sweeping**: Sweeper Lambda automatically transfers funds to treasury
+   wallet
 5. **Status Update**: Invoice marked as "swept"
 
 ## Clean Up
@@ -245,4 +258,5 @@ cdk destroy --app 'npx ts-node bin/solana-invoice.ts'
 1. **Invoice Generation Fails**: Verify mnemonic is in Secrets Manager
 2. **Payments Not Detected**: Check RPC URL and wait for confirmation
 3. **Sweeping Issues**: Ensure hot wallet has sufficient SOL for rent/fees
-4. **SPL Token Issues**: Verify token mint address and ensure Associated Token Account exists
+4. **SPL Token Issues**: Verify token mint address and ensure Associated Token
+   Account exists

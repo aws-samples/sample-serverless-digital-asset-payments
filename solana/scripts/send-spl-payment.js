@@ -1,5 +1,15 @@
-const { Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction } = require('@solana/web3.js');
-const { getOrCreateAssociatedTokenAccount, createTransferInstruction, getMint } = require('@solana/spl-token');
+const {
+  Connection,
+  Keypair,
+  PublicKey,
+  Transaction,
+  sendAndConfirmTransaction,
+} = require('@solana/web3.js');
+const {
+  getOrCreateAssociatedTokenAccount,
+  createTransferInstruction,
+  getMint,
+} = require('@solana/spl-token');
 const bs58 = require('bs58');
 require('dotenv').config();
 
@@ -21,32 +31,39 @@ if (!fromPrivateKey) {
 }
 
 async function sendSPLPayment() {
-  const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com', 'confirmed');
-  
-  const fromKeypair = Keypair.fromSecretKey(bs58.default ? bs58.default.decode(fromPrivateKey) : bs58.decode(fromPrivateKey));
+  const connection = new Connection(
+    process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
+    'confirmed'
+  );
+
+  const fromKeypair = Keypair.fromSecretKey(
+    bs58.default ? bs58.default.decode(fromPrivateKey) : bs58.decode(fromPrivateKey)
+  );
   const toPublicKey = new PublicKey(toAddress);
   const mintPublicKey = new PublicKey(tokenMint);
-  
+
   // Fetch actual decimals from mint
   const mintInfo = await getMint(connection, mintPublicKey);
   const decimals = mintInfo.decimals;
-  
-  console.log(`Sending ${amount} tokens from ${fromKeypair.publicKey.toBase58()} to ${toAddress}...`);
-  
+
+  console.log(
+    `Sending ${amount} tokens from ${fromKeypair.publicKey.toBase58()} to ${toAddress}...`
+  );
+
   const fromTokenAccount = await getOrCreateAssociatedTokenAccount(
     connection,
     fromKeypair,
     mintPublicKey,
     fromKeypair.publicKey
   );
-  
+
   const toTokenAccount = await getOrCreateAssociatedTokenAccount(
     connection,
     fromKeypair,
     mintPublicKey,
     toPublicKey
   );
-  
+
   const transaction = new Transaction().add(
     createTransferInstruction(
       fromTokenAccount.address,
@@ -55,11 +72,13 @@ async function sendSPLPayment() {
       amount * Math.pow(10, decimals)
     )
   );
-  
+
   const signature = await sendAndConfirmTransaction(connection, transaction, [fromKeypair]);
-  
+
   console.log(`✅ SPL token payment sent! Signature: ${signature}`);
-  console.log(`View on Solana Explorer: https://explorer.solana.com/tx/${signature}?cluster=devnet`);
+  console.log(
+    `View on Solana Explorer: https://explorer.solana.com/tx/${signature}?cluster=devnet`
+  );
 }
 
 sendSPLPayment().catch(console.error);

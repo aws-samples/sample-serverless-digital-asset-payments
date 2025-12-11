@@ -76,20 +76,18 @@ exports.handler = async () => {
           console.log(`Invoice ${invoiceId} processed successfully`);
           processed.push(invoiceId);
         } else {
-          throw new Error(
-            `Insufficient SOL: required ${amount}, got ${balanceInSol}`
-          );
+          throw new Error(`Insufficient SOL: required ${amount}, got ${balanceInSol}`);
         }
       } else if (currency === 'SPL' && tokenMint) {
         const publicKey = new PublicKey(address);
         const mintPublicKey = new PublicKey(tokenMint);
-        
+
         const ata = await getAssociatedTokenAddress(mintPublicKey, publicKey);
-        
+
         try {
           const tokenAccount = await getAccount(connection, ata);
           const balance = Number(tokenAccount.amount);
-          
+
           // Fetch actual decimals from mint
           const { getMint } = require('@solana/spl-token');
           const mintInfo = await getMint(connection, mintPublicKey);

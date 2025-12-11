@@ -100,7 +100,9 @@ exports.handler = async event => {
     .promise();
   const { pk } = JSON.parse(pkSecret.SecretString);
 
-  const hotWallet = Keypair.fromSecretKey(bs58.default ? bs58.default.decode(pk) : Buffer.from(pk, 'base64'));
+  const hotWallet = Keypair.fromSecretKey(
+    bs58.default ? bs58.default.decode(pk) : Buffer.from(pk, 'base64')
+  );
 
   let sweptCount = 0;
 
@@ -130,7 +132,7 @@ exports.handler = async event => {
 
       if (currency === 'SOL') {
         const balance = await connection.getBalance(invoiceKeypair.publicKey);
-        
+
         // Estimate fee using modern API
         const testTransaction = new Transaction().add(
           SystemProgram.transfer({
@@ -141,7 +143,7 @@ exports.handler = async event => {
         );
         testTransaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
         testTransaction.feePayer = invoiceKeypair.publicKey;
-        
+
         const estimatedFee = await testTransaction.getEstimatedFee(connection);
 
         if (balance <= estimatedFee) {
@@ -198,12 +200,7 @@ exports.handler = async event => {
         }
 
         transaction.add(
-          createTransferInstruction(
-            sourceAta,
-            destAta,
-            invoiceKeypair.publicKey,
-            tokenBalance
-          )
+          createTransferInstruction(sourceAta, destAta, invoiceKeypair.publicKey, tokenBalance)
         );
 
         await sendAndConfirmTransaction(connection, transaction, [hotWallet, invoiceKeypair]);

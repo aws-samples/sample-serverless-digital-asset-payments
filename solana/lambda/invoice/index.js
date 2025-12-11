@@ -23,7 +23,9 @@ exports.handler = async event => {
   }
 
   console.log('Fetching mnemonic from SecretsManager...');
-  const secret = await secretsManager.getSecretValue({ SecretId: 'solana-wallet-mnemonic' }).promise();
+  const secret = await secretsManager
+    .getSecretValue({ SecretId: 'solana-wallet-mnemonic' })
+    .promise();
   const { mnemonic } = JSON.parse(secret.SecretString);
   console.log('Mnemonic successfully retrieved.');
 
