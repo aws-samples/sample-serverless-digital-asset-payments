@@ -47,6 +47,7 @@ The Solana implementation follows the same architecture as the EVM version but u
 ## Quick Start
 
 ```bash
+cd sample-serverless-digital-asset-payments/solana
 npm install
 npm run generate-wallets  # Outputs addresses to fund
 # Fund wallets (see output from generate-wallets)
@@ -60,6 +61,7 @@ npm run setup-secrets
 ### 1. Install Dependencies
 
 ```bash
+cd sample-serverless-digital-asset-payments/solana
 npm install
 ```
 
