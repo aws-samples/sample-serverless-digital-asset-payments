@@ -30,7 +30,7 @@
   },
   "scripts": {
     "build": "npx tsc",
-    "deploy": "cdk deploy --app 'npx ts-node bin/solana-invoice.ts'",
+    "deploy": "cdk deploy --app 'npx ts-node bin/solana-invoice.ts' --require-approval never",
     "synth": "cdk synth --app 'npx ts-node bin/solana-invoice.ts'",
     "setup-secrets": "./scripts/setup-secrets.sh",
     "generate-wallets": "node scripts/generate-wallets.js",
