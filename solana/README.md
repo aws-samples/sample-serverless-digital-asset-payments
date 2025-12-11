@@ -51,6 +51,7 @@ cd sample-serverless-digital-asset-payments/solana
 npm install
 npm run generate-wallets  # Outputs addresses to fund
 # Fund wallets (see output from generate-wallets)
+cdk bootstrap
 npm run deploy
 npm run setup-secrets
 # Test payments (see Testing Payments section)
