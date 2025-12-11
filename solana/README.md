@@ -2,6 +2,25 @@
 
 This is a Solana-specific implementation of the serverless digital asset payment system, based on the EVM-compatible blueprint.
 
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Key Differences from EVM Implementation](#key-differences-from-evm-implementation)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Deployment](#deployment)
+- [Usage](#usage)
+  - [Retrieve API Credentials](#retrieve-api-credentials)
+  - [Create Invoice](#create-invoice)
+  - [Get Invoice](#get-invoice)
+  - [Invoice Management](#invoice-management)
+- [Testing Payments](#testing-payments)
+- [API Reference](#api-reference)
+- [Payment Flow](#payment-flow)
+- [Clean Up](#clean-up)
+- [Security Notes](#security-notes)
+- [Troubleshooting](#troubleshooting)
+
 ## Architecture
 
 The Solana implementation follows the same architecture as the EVM version but uses Solana-specific libraries and transaction structures:
@@ -82,9 +101,7 @@ Stores mnemonic and hot wallet private key in AWS Secrets Manager.
 
 ## Usage
 
-### Create Invoice
-
-Retrieve API URL and Key:
+### Retrieve API Credentials
 
 ```bash
 export STACK_NAME="SolanaInvoiceStack"
@@ -99,7 +116,9 @@ export API_KEY=$(aws apigateway get-api-key --api-key "$API_KEY_ID" --include-va
   --query 'value' --output text 2>/dev/null)
 ```
 
-### Create SOL Invoice
+### Create Invoice
+
+Create SOL Invoice:
 
 ```bash
 curl -X POST "${API_URL}generateInvoice" \
@@ -111,7 +130,7 @@ curl -X POST "${API_URL}generateInvoice" \
   }'
 ```
 
-### Create SPL Token Invoice
+Create SPL Token Invoice:
 
 ```bash
 curl -X POST "${API_URL}generateInvoice" \
@@ -131,6 +150,54 @@ curl -X POST "${API_URL}generateInvoice" \
 curl -X GET "${API_URL}invoices/{invoiceId}" \
   -H "X-API-Key: $API_KEY"
 ```
+
+## Testing Payments
+
+### Automated Test Scripts
+
+Test complete payment flow (create invoice → send payment → verify):
+
+```bash
+# Test SOL payment (default 0.01 SOL)
+./scripts/test-sol-payment.sh
+
+# Test SOL payment with custom amount
+./scripts/test-sol-payment.sh 0.05
+
+# Test USDC payment (default 1.00 USDC)
+./scripts/test-spl-payment.sh
+
+# Test USDC payment with custom amount
+./scripts/test-spl-payment.sh 5.00
+
+# Test custom SPL token
+./scripts/test-spl-payment.sh 10.00 <TOKEN_MINT> <TOKEN_SYMBOL>
+```
+
+### Manual Payment Scripts
+
+Send payment to existing invoice:
+
+```bash
+# Send SOL
+node scripts/send-payment.js <INVOICE_ADDRESS> <AMOUNT_SOL>
+
+# Send SPL token
+node scripts/send-spl-payment.js <INVOICE_ADDRESS> <AMOUNT> <TOKEN_MINT>
+```
+
+**Note:** Payer private key is automatically read from `SOLANA_PAYER_PRIVATE_KEY` in `.env`.
+
+### Monitor Invoice Status
+
+```bash
+# Check specific invoice
+curl -X GET "${API_URL}invoices/{invoiceId}" \
+  -H "X-API-Key: $API_KEY"
+
+# Watch for status changes: pending → paid → swept
+```
+
 
 ## API Reference
 
@@ -152,42 +219,12 @@ curl -X GET "${API_URL}invoices/{invoiceId}" \
 }
 ```
 
-### Invoice Management
+### Invoice Management Endpoints
 
 - **GET** `/invoices` - List all invoices (with optional `?status=pending` filter)
 - **GET** `/invoices/{invoiceId}` - Get specific invoice
 - **PUT** `/invoices/{invoiceId}` - Update invoice status
 - **DELETE** `/invoices/{invoiceId}` - Delete pending invoice
-
-## Testing Payments
-
-### Send SOL Payment
-
-```bash
-node scripts/send-payment.js <PAYER_PRIVATE_KEY> <INVOICE_ADDRESS> <AMOUNT_SOL>
-
-# Example:
-node scripts/send-payment.js "YOUR_PAYER_KEY" "7GpZE4cHvrzbjFTGLdhaRTVwu3rTbhqPfU6rViTA8MgM" "0.01"
-```
-
-### Send USDC (SPL Token) Payment
-
-```bash
-node scripts/send-spl-payment.js <PAYER_PRIVATE_KEY> <INVOICE_ADDRESS> <AMOUNT> <TOKEN_MINT>
-
-# Example (Devnet USDC):
-node scripts/send-spl-payment.js "YOUR_PAYER_KEY" "3QtomtBkJaShApNF9y2Enhgpg6Nq8LJw9PdrrugwXi1c" "1.00" "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
-```
-
-### Monitor Invoice Status
-
-```bash
-# Check specific invoice
-curl -X GET "${API_URL}invoices/{invoiceId}" \
-  -H "X-API-Key: $API_KEY"
-
-# Watch for status changes: pending → paid → swept
-```
 
 ## Payment Flow
 
