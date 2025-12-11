@@ -41,8 +41,8 @@ WATCHER_FUNCTION=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME"
   --query "Stacks[0].Outputs[?OutputKey=='SolanaWatcherFunctionName'].OutputValue" --output text)
 aws lambda invoke --function-name "$WATCHER_FUNCTION" /dev/null > /dev/null 2>&1
 
-echo "⏳ Waiting 5s for sweeper to process..."
-sleep 5
+echo "⏳ Waiting 10s for sweeper to process..."
+sleep 10
 
 echo "🔍 Checking status..."
 curl -s -X GET "${API_URL}invoices/${INVOICE_ID}" -H "X-API-Key: $API_KEY" | python3 -m json.tool

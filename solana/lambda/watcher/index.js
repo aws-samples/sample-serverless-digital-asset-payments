@@ -89,7 +89,11 @@ exports.handler = async () => {
         try {
           const tokenAccount = await getAccount(connection, ata);
           const balance = Number(tokenAccount.amount);
-          const required = parseFloat(amount) * Math.pow(10, 6); // Assuming 6 decimals for SPL tokens
+          
+          // Fetch actual decimals from mint
+          const { getMint } = require('@solana/spl-token');
+          const mintInfo = await getMint(connection, mintPublicKey);
+          const required = parseFloat(amount) * Math.pow(10, mintInfo.decimals);
 
           if (balance >= required) {
             await markPaid(invoiceId);

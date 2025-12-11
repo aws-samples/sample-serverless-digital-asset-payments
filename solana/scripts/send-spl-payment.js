@@ -1,5 +1,5 @@
 const { Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction } = require('@solana/web3.js');
-const { getOrCreateAssociatedTokenAccount, createTransferInstruction } = require('@solana/spl-token');
+const { getOrCreateAssociatedTokenAccount, createTransferInstruction, getMint } = require('@solana/spl-token');
 const bs58 = require('bs58');
 require('dotenv').config();
 
@@ -27,6 +27,10 @@ async function sendSPLPayment() {
   const toPublicKey = new PublicKey(toAddress);
   const mintPublicKey = new PublicKey(tokenMint);
   
+  // Fetch actual decimals from mint
+  const mintInfo = await getMint(connection, mintPublicKey);
+  const decimals = mintInfo.decimals;
+  
   console.log(`Sending ${amount} tokens from ${fromKeypair.publicKey.toBase58()} to ${toAddress}...`);
   
   const fromTokenAccount = await getOrCreateAssociatedTokenAccount(
@@ -48,7 +52,7 @@ async function sendSPLPayment() {
       fromTokenAccount.address,
       toTokenAccount.address,
       fromKeypair.publicKey,
-      amount * Math.pow(10, 6) // Assuming 6 decimals for USDC
+      amount * Math.pow(10, decimals)
     )
   );
   
