@@ -178,14 +178,18 @@ Test complete payment flow (create invoice → send payment → verify):
 
 ### Manual Payment Scripts
 
-Send payment to existing invoice:
+Payments can be sent by:
+
+- Manually sending funds to the invoice address using any browser-based Solana wallet
+- Scanning the QR code with a mobile wallet
+- Running the following scripts:
 
 ```bash
 # Send SOL
 node scripts/send-payment.js <INVOICE_ADDRESS> <AMOUNT_SOL>
 
 # Send SPL token
-node scripts/send-spl-payment.js <INVOICE_ADDRESS> <AMOUNT> <TOKEN_MINT>
+node scripts/send-spl-payment.js <INVOICE_ADDRESS> <AMOUNT> <TOKEN_MINT_ADDRESS>
 ```
 
 **Note:** Payer private key is automatically read from
