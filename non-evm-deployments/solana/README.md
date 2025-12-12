@@ -49,7 +49,7 @@ uses Solana-specific libraries and transaction structures:
 ## Quick Start
 
 ```bash
-cd sample-serverless-digital-asset-payments/non-evm-deployments/solana
+cd ~/sample-serverless-digital-asset-payments/non-evm-deployments/solana
 npm install
 npm run setup
 ```
@@ -63,7 +63,7 @@ For detailed deployment steps, continue below.
 ### 1. Install Dependencies
 
 ```bash
-cd sample-serverless-digital-asset-payments/non-evm-deployments/solana
+cd ~/sample-serverless-digital-asset-payments/non-evm-deployments/solana
 npm install
 ```
 

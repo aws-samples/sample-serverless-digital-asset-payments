@@ -133,7 +133,6 @@ exports.handler = async event => {
       if (currency === 'SOL') {
         const balance = await connection.getBalance(invoiceKeypair.publicKey);
 
-        // Estimate fee using modern API
         const testTransaction = new Transaction().add(
           SystemProgram.transfer({
             fromPubkey: invoiceKeypair.publicKey,
