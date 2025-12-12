@@ -6,7 +6,6 @@ const {
   Transaction,
   SystemProgram,
   LAMPORTS_PER_SOL,
-  sendAndConfirmTransaction,
 } = require('@solana/web3.js');
 const {
   getAccount,
@@ -15,16 +14,40 @@ const {
 } = require('@solana/spl-token');
 const { derivePath } = require('ed25519-hd-key');
 const { mnemonicToSeedSync } = require('bip39');
-const bs58 = require('bs58');
 
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const secretsManager = new AWS.SecretsManager();
+const kms = new AWS.KMS();
 const sns = new AWS.SNS();
 
 const connection = new Connection(process.env.SOLANA_RPC_URL, 'confirmed');
 const TREASURY_PUBLIC_KEY = new PublicKey(process.env.SOLANA_TREASURY_PUBLIC_KEY);
 const TABLE = process.env.TABLE;
 const SNS_TOPIC_ARN = process.env.SNS_TOPIC_ARN;
+const KMS_KEY_ID = process.env.KMS_KEY_ID;
+
+let hotWalletPublicKey;
+
+async function getHotWalletPublicKey() {
+  if (hotWalletPublicKey) return hotWalletPublicKey;
+
+  const { PublicKey: kmsPublicKey } = await kms.getPublicKey({ KeyId: KMS_KEY_ID }).promise();
+  const publicKeyBytes = new Uint8Array(kmsPublicKey).slice(-32);
+  hotWalletPublicKey = new PublicKey(publicKeyBytes);
+  return hotWalletPublicKey;
+}
+
+async function signWithKms(message) {
+  const { Signature } = await kms
+    .sign({
+      KeyId: KMS_KEY_ID,
+      Message: message,
+      MessageType: 'RAW',
+      SigningAlgorithm: 'ED25519_SHA_512',
+    })
+    .promise();
+  return new Uint8Array(Signature);
+}
 
 async function sendErrorNotification(error, invoiceId) {
   try {
@@ -62,7 +85,7 @@ This error may require manual intervention to ensure funds are properly swept.
   }
 }
 
-async function ensureSufficientRent(invoiceKeypair, hotWallet, requiredLamports, invoiceId) {
+async function ensureSufficientRent(invoiceKeypair, requiredLamports, invoiceId) {
   const balance = await connection.getBalance(invoiceKeypair.publicKey);
 
   if (balance < requiredLamports) {
@@ -72,15 +95,23 @@ async function ensureSufficientRent(invoiceKeypair, hotWallet, requiredLamports,
     const topUpAmount = requiredLamports - balance;
     console.log(`Topping up ${topUpAmount / LAMPORTS_PER_SOL} SOL...`);
 
+    const hotWallet = await getHotWalletPublicKey();
     const transaction = new Transaction().add(
       SystemProgram.transfer({
-        fromPubkey: hotWallet.publicKey,
+        fromPubkey: hotWallet,
         toPubkey: invoiceKeypair.publicKey,
         lamports: topUpAmount,
       })
     );
 
-    await sendAndConfirmTransaction(connection, transaction, [hotWallet]);
+    transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    transaction.feePayer = hotWallet;
+
+    const message = transaction.serializeMessage();
+    const signature = await signWithKms(message);
+    transaction.addSignature(hotWallet, Buffer.from(signature));
+
+    await connection.sendRawTransaction(transaction.serialize());
     return await connection.getBalance(invoiceKeypair.publicKey);
   }
 
@@ -94,15 +125,6 @@ exports.handler = async event => {
     .getSecretValue({ SecretId: 'solana-wallet-mnemonic' })
     .promise();
   const { mnemonic } = JSON.parse(mnemonicSecret.SecretString);
-
-  const pkSecret = await secretsManager
-    .getSecretValue({ SecretId: 'solana-wallet/hot-pk' })
-    .promise();
-  const { pk } = JSON.parse(pkSecret.SecretString);
-
-  const hotWallet = Keypair.fromSecretKey(
-    bs58.default ? bs58.default.decode(pk) : Buffer.from(pk, 'base64')
-  );
 
   let sweptCount = 0;
 
@@ -160,7 +182,11 @@ exports.handler = async event => {
           })
         );
 
-        await sendAndConfirmTransaction(connection, transaction, [invoiceKeypair]);
+        transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+        transaction.feePayer = invoiceKeypair.publicKey;
+        transaction.sign(invoiceKeypair);
+
+        await connection.sendRawTransaction(transaction.serialize());
         console.log(`Full SOL sweep complete: ${sweepAmount / LAMPORTS_PER_SOL} SOL`);
       } else if (currency === 'SPL' && tokenMint) {
         const mintPublicKey = new PublicKey(tokenMint);
@@ -176,21 +202,21 @@ exports.handler = async event => {
         }
 
         const rentExemption = await connection.getMinimumBalanceForRentExemption(0);
-        await ensureSufficientRent(invoiceKeypair, hotWallet, rentExemption * 2, invoiceId);
+        await ensureSufficientRent(invoiceKeypair, rentExemption * 2, invoiceId);
 
         console.log(`Sweeping ${tokenBalance} ${tokenSymbol} to treasury...`);
 
-        // Check if treasury ATA exists, create if not
+        const hotWallet = await getHotWalletPublicKey();
         const transaction = new Transaction();
+
         try {
           await getAccount(connection, destAta);
         } catch (err) {
-          // ATA doesn't exist, create it
           const { createAssociatedTokenAccountInstruction } = require('@solana/spl-token');
           console.log(`Creating treasury ATA for ${tokenSymbol}...`);
           transaction.add(
             createAssociatedTokenAccountInstruction(
-              hotWallet.publicKey,
+              hotWallet,
               destAta,
               TREASURY_PUBLIC_KEY,
               mintPublicKey
@@ -202,7 +228,15 @@ exports.handler = async event => {
           createTransferInstruction(sourceAta, destAta, invoiceKeypair.publicKey, tokenBalance)
         );
 
-        await sendAndConfirmTransaction(connection, transaction, [hotWallet, invoiceKeypair]);
+        transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+        transaction.feePayer = hotWallet;
+
+        const message = transaction.serializeMessage();
+        const hotWalletSig = await signWithKms(message);
+        transaction.addSignature(hotWallet, Buffer.from(hotWalletSig));
+        transaction.partialSign(invoiceKeypair);
+
+        await connection.sendRawTransaction(transaction.serialize());
         console.log(`SPL token sweep complete for invoice ${invoiceId}`);
       }
 

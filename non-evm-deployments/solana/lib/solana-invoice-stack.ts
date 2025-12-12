@@ -47,11 +47,17 @@ export class SolanaInvoiceStack extends cdk.Stack {
       secretObjectValue: {},
     });
 
-    const hotPkSecret = new secretsmanager.Secret(this, 'SolanaHotPkSecret', {
-      secretName: 'solana-wallet/hot-pk',
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      secretObjectValue: {},
+    const hotWalletKmsKeyCfn = new cdk.aws_kms.CfnKey(this, 'SolanaHotWalletKey', {
+      description: 'Solana hot wallet signing key',
+      keySpec: 'ECC_NIST_EDWARDS25519',
+      keyUsage: 'SIGN_VERIFY',
     });
+
+    const hotWalletKmsKey = cdk.aws_kms.Key.fromKeyArn(
+      this,
+      'ImportedHotWalletKey',
+      hotWalletKmsKeyCfn.attrArn
+    );
 
     const paymentNotificationTopic = new sns.Topic(this, 'SolanaPaymentNotificationTopic', {
       displayName: 'Solana Payment Notifications',
@@ -225,12 +231,18 @@ export class SolanaInvoiceStack extends cdk.Stack {
         SOLANA_TREASURY_PUBLIC_KEY: treasuryPublicKey,
         SOLANA_RPC_URL: rpcUrl,
         SNS_TOPIC_ARN: paymentNotificationTopic.topicArn,
+        KMS_KEY_ID: hotWalletKmsKeyCfn.attrKeyId,
       },
     });
 
     invoiceTable.grantReadWriteData(sweeperFn);
     mnemonicSecret.grantRead(sweeperFn);
-    hotPkSecret.grantRead(sweeperFn);
+    sweeperFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['kms:Sign', 'kms:GetPublicKey'],
+        resources: [hotWalletKmsKeyCfn.attrArn],
+      })
+    );
     paymentNotificationTopic.grantPublish(sweeperFn);
 
     sweeperFn.addEventSource(
@@ -271,21 +283,6 @@ export class SolanaInvoiceStack extends cdk.Stack {
       })
     );
 
-    hotPkSecret.addToResourcePolicy(
-      new iam.PolicyStatement({
-        sid: 'RestrictHotPkSecretAccess',
-        effect: iam.Effect.DENY,
-        principals: [new iam.AnyPrincipal()],
-        actions: ['secretsmanager:GetSecretValue'],
-        resources: ['*'],
-        conditions: {
-          ArnNotEquals: {
-            'aws:PrincipalArn': [sweeperFn.role?.roleArn || ''].filter(arn => arn !== ''),
-          },
-        },
-      })
-    );
-
     new cdk.CfnOutput(this, 'SolanaInvoiceFunctionName', { value: invoiceFn.functionName });
     new cdk.CfnOutput(this, 'SolanaInvoiceManagementFunctionName', {
       value: invoiceManagementFn.functionName,
@@ -293,7 +290,7 @@ export class SolanaInvoiceStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'SolanaWatcherFunctionName', { value: watcherFn.functionName });
     new cdk.CfnOutput(this, 'SolanaSweeperFunctionName', { value: sweeperFn.functionName });
     new cdk.CfnOutput(this, 'SolanaWalletSeedSecretName', { value: mnemonicSecret.secretName });
-    new cdk.CfnOutput(this, 'SolanaWalletHotPkSecretName', { value: hotPkSecret.secretName });
+    new cdk.CfnOutput(this, 'SolanaHotWalletKmsKeyId', { value: hotWalletKmsKeyCfn.attrKeyId });
     new cdk.CfnOutput(this, 'SolanaPaymentNotificationTopicArn', {
       value: paymentNotificationTopic.topicArn,
     });

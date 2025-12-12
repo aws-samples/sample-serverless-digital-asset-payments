@@ -2,21 +2,16 @@
 
 STACK_NAME="SolanaInvoiceStack"
 
-echo "🔐 Setting up Solana secrets in AWS Secrets Manager..."
+echo "🔐 Setting up Solana secrets and KMS key..."
 
-if [ ! -f .env ]; then
-  echo "❌ Error: .env file not found. Please run 'npm run generate-wallets' first."
+AWS_REGION=$(aws configure get region 2>&1)
+
+if [ $? -ne 0 ] || [ -z "$AWS_REGION" ]; then
+  echo "❌ Error: AWS region not configured. Run 'aws configure' first."
   exit 1
 fi
 
-source .env
-
-if [ -z "$SOLANA_HOT_WALLET_PRIVATE_KEY" ]; then
-  echo "❌ Error: SOLANA_HOT_WALLET_PRIVATE_KEY not set in .env"
-  exit 1
-fi
-
-echo "📝 Fetching secret names from stack outputs..."
+echo "📝 Fetching outputs from stack..."
 MNEMONIC_SECRET=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
   --query "Stacks[0].Outputs[?OutputKey=='SolanaWalletSeedSecretName'].OutputValue" --output text 2>&1)
 
@@ -26,24 +21,17 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-HOT_PK_SECRET=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
-  --query "Stacks[0].Outputs[?OutputKey=='SolanaWalletHotPkSecretName'].OutputValue" --output text 2>&1)
+KMS_KEY_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+  --query "Stacks[0].Outputs[?OutputKey=='SolanaHotWalletKmsKeyId'].OutputValue" --output text 2>&1)
 
 if [ $? -ne 0 ]; then
-  echo "❌ Error: Failed to fetch hot wallet secret name from stack"
-  echo "$HOT_PK_SECRET"
+  echo "❌ Error: Failed to fetch KMS key ID from stack"
+  echo "$KMS_KEY_ID"
   exit 1
 fi
 
-if [ -z "$MNEMONIC_SECRET" ] || [ -z "$HOT_PK_SECRET" ]; then
-  echo "❌ Error: Could not fetch secret names from stack. Make sure the stack is deployed."
-  exit 1
-fi
-
-AWS_REGION=$(aws configure get region 2>&1)
-
-if [ $? -ne 0 ] || [ -z "$AWS_REGION" ]; then
-  echo "❌ Error: AWS region not configured. Run 'aws configure' first."
+if [ -z "$MNEMONIC_SECRET" ] || [ -z "$KMS_KEY_ID" ]; then
+  echo "❌ Error: Could not fetch outputs from stack. Make sure the stack is deployed."
   exit 1
 fi
 
@@ -68,16 +56,31 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "💾 Storing hot wallet private key in Secrets Manager..."
-RESULT=$(aws secretsmanager put-secret-value \
-  --secret-id "$HOT_PK_SECRET" \
-  --secret-string "{\"pk\":\"$SOLANA_HOT_WALLET_PRIVATE_KEY\"}" \
-  --region "${AWS_REGION}" 2>&1)
+echo "🔑 Getting KMS public key for hot wallet..."
+KMS_PUBKEY=$(aws kms get-public-key --key-id "$KMS_KEY_ID" --region "${AWS_REGION}" \
+  --query 'PublicKey' --output text 2>&1)
 
 if [ $? -ne 0 ]; then
-  echo "❌ Error: Failed to store hot wallet private key in Secrets Manager"
-  echo "$RESULT"
+  echo "❌ Error: Failed to get KMS public key"
+  echo "$KMS_PUBKEY"
   exit 1
 fi
 
-echo "✅ Secrets successfully stored in AWS Secrets Manager"
+SOLANA_PUBKEY=$(node -e "
+const pubkeyDer = Buffer.from('$KMS_PUBKEY', 'base64');
+const pubkeyBytes = pubkeyDer.slice(-32);
+const { PublicKey } = require('@solana/web3.js');
+const pk = new PublicKey(pubkeyBytes);
+console.log(pk.toBase58());
+" 2>&1)
+
+if [ $? -ne 0 ]; then
+  echo "❌ Error: Failed to derive Solana public key"
+  echo "$SOLANA_PUBKEY"
+  exit 1
+fi
+
+echo "✅ Setup complete!"
+echo ""
+echo "📋 Hot Wallet Address (fund this with SOL): $SOLANA_PUBKEY"
+echo "🔑 KMS Key ID: $KMS_KEY_ID"

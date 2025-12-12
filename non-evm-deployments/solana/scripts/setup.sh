@@ -48,7 +48,7 @@ generate_wallets() {
     print_header "Generating Wallets"
     cd "$PROJECT_ROOT"
     
-    if [ -f .env ] && grep -q "SOLANA_HOT_WALLET_PRIVATE_KEY" .env; then
+    if [ -f .env ] && grep -q "SOLANA_TREASURY_PUBLIC_KEY" .env; then
         echo "⚠️  Wallets already exist in .env"
         read -p "Regenerate? (y/N): " -n 1 -r
         echo
@@ -57,16 +57,6 @@ generate_wallets() {
     
     npm run generate-wallets
     echo "✅ Wallets generated"
-}
-
-prompt_funding() {
-    print_header "Fund Wallets"
-    
-    cd "$PROJECT_ROOT"
-    npm run wallet-info
-    
-    echo ""
-    read -p "Press Enter when wallets are funded..."
 }
 
 bootstrap_cdk() {
@@ -134,13 +124,25 @@ display_summary() {
     API_KEY_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
         --query "Stacks[0].Outputs[?OutputKey=='SolanaInvoiceApiKeyId'].OutputValue" --output text)
     
+    KMS_KEY_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+        --query "Stacks[0].Outputs[?OutputKey=='SolanaHotWalletKmsKeyId'].OutputValue" --output text)
+    
     echo "🎉 Your Solana Invoice System is ready!"
     echo ""
+    
+    print_header "⚠️  IMPORTANT: Fund Your Wallets"
+    npm run wallet-info
+    
+    print_header "API Information"
     echo "API URL: $API_URL"
     echo ""
     echo "Get API Key:"
     echo "  aws apigateway get-api-key --api-key $API_KEY_ID --include-value --query 'value' --output text"
     echo ""
+    echo "KMS Hot Wallet Key ID: $KMS_KEY_ID"
+    echo ""
+    
+    print_header "Test Payments"
     echo "Test SOL payment:"
     echo "  ./scripts/test-sol-payment.sh"
     echo ""
@@ -154,11 +156,11 @@ main() {
     echo "This will:"
     echo "1. Check prerequisites"
     echo "2. Install dependencies"
-    echo "3. Generate wallets"
-    echo "4. Prompt for funding"
-    echo "5. Bootstrap CDK"
-    echo "6. Deploy stack"
-    echo "7. Setup secrets"
+    echo "3. Generate wallets (treasury & test payer)"
+    echo "4. Bootstrap CDK"
+    echo "5. Deploy stack (creates KMS hot wallet)"
+    echo "6. Setup secrets (mnemonic & KMS key)"
+    echo "7. Display hot wallet address for funding"
     echo "8. Subscribe to SNS notifications (optional)"
     echo ""
     
@@ -169,7 +171,6 @@ main() {
     check_prerequisites
     install_dependencies
     generate_wallets
-    prompt_funding
     bootstrap_cdk
     deploy_stack
     setup_secrets

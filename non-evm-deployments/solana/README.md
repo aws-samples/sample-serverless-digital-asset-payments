@@ -39,6 +39,7 @@ uses Solana-specific libraries and transaction structures:
 4. **Gas Model**: Lamports for rent/fees vs gas in Wei
 5. **Account Model**: Solana's account-based model with Associated Token
    Accounts
+6. **Hot Wallet Security**: Uses AWS KMS with ed25519 signing.
 
 ## Prerequisites
 
