@@ -248,7 +248,8 @@ curl -X GET "${API_URL}invoices/{invoiceId}" \
 ## Clean Up
 
 ```bash
-cdk destroy --app 'npx ts-node bin/solana-invoice.ts'
+cd ~/sample-serverless-digital-asset-payments/non-evm-deployments/solana
+cdk destroy
 ```
 
 ## Security Notes
