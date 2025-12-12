@@ -100,7 +100,7 @@ exports.handler = async () => {
             processed.push(invoiceId);
           } else {
             throw new Error(
-              `Insufficient ${tokenSymbol}: required ${amount}, got ${balance / Math.pow(10, 6)}`
+              `Insufficient ${tokenSymbol}: required ${amount}, got ${balance / Math.pow(10, mintInfo.decimals)}`
             );
           }
         } catch (err) {
