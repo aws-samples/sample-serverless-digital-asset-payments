@@ -13,8 +13,6 @@ system, based on the EVM-compatible blueprint.
 - [Usage](#usage)
   - [Retrieve API Credentials](#retrieve-api-credentials)
   - [Create Invoice](#create-invoice)
-  - [Get Invoice](#get-invoice)
-  - [Invoice Management](#invoice-management)
 - [Testing Payments](#testing-payments)
 - [API Reference](#api-reference)
 - [Payment Flow](#payment-flow)
@@ -53,13 +51,12 @@ uses Solana-specific libraries and transaction structures:
 ```bash
 cd sample-serverless-digital-asset-payments/non-evm-deployments/solana
 npm install
-npm run generate-wallets  # Outputs addresses to fund
-# Fund wallets (see output from generate-wallets)
-cdk bootstrap
-npm run deploy
-npm run setup-secrets
-# Test payments (see Testing Payments section)
+npm run setup
 ```
+
+**After deployment, proceed to [Usage](#usage) to start creating invoices.**
+
+For detailed deployment steps, continue below.
 
 ## Deployment
 
@@ -78,6 +75,8 @@ npm run generate-wallets
 
 Creates treasury, hot, and test payer wallets, populating `.env` automatically.
 The script outputs all wallet addresses and funding instructions.
+
+**Note:** To use your own wallets, modify `SOLANA_TREASURY_ADDRESS`, `SOLANA_HOT_WALLET_PRIVATE_KEY`, and `SOLANA_PAYER_PRIVATE_KEY` in `.env` after running this script, then continue with deployment.
 
 ### 3. Fund Wallets
 
@@ -251,12 +250,11 @@ cdk destroy --app 'npx ts-node bin/solana-invoice.ts'
 - Mnemonic and hot wallet keys stored in AWS Secrets Manager
 - Secrets restricted to specific Lambda function roles
 - API Gateway secured with API keys
-- Treasury wallet should be a hardware wallet for production
+- For security, the treasury wallet is recommended to be an offline hardware wallet 
 
 ## Troubleshooting
 
 1. **Invoice Generation Fails**: Verify mnemonic is in Secrets Manager
 2. **Payments Not Detected**: Check RPC URL and wait for confirmation
 3. **Sweeping Issues**: Ensure hot wallet has sufficient SOL for rent/fees
-4. **SPL Token Issues**: Verify token mint address and ensure Associated Token
-   Account exists
+4. **SPL Token Issues**: Verify token mint address and ensure Associated Token Account exists
