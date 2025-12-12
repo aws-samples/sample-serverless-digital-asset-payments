@@ -1,0 +1,9 @@
+{
+  "name": "solana-watcher-lambda",
+  "version": "1.0.0",
+  "dependencies": {
+    "@solana/web3.js": "^1.95.8",
+    "@solana/spl-token": "^0.4.9",
+    "aws-sdk": "^2.1692.0"
+  }
+}

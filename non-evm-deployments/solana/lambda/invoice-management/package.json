@@ -1,0 +1,7 @@
+{
+  "name": "solana-invoice-management-lambda",
+  "version": "1.0.0",
+  "dependencies": {
+    "aws-sdk": "^2.1692.0"
+  }
+}

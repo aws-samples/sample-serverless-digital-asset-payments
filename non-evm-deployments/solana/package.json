@@ -1,0 +1,46 @@
+{
+  "name": "solana-invoice-cdk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AWS CDK Stack for Solana Digital Asset Invoices",
+  "dependencies": {
+    "@aws-sdk/client-kms": "^3.948.0",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.95.8",
+    "aws-cdk-lib": "^2.232.1",
+    "aws-sdk": "^2.1692.0",
+    "bip39": "^3.1.0",
+    "bs58": "^6.0.0",
+    "constructs": "^10.3.0",
+    "dotenv": "^16.5.0",
+    "ed25519-hd-key": "^1.3.0",
+    "esbuild": "^0.25.5",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^22.15.2",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "cdk-nag": "^2.28.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-security": "^1.7.1",
+    "jest": "^29.7.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "build": "npx tsc",
+    "deploy": "cdk deploy --app 'npx ts-node bin/solana-invoice.ts' --require-approval never",
+    "synth": "cdk synth --app 'npx ts-node bin/solana-invoice.ts'",
+    "setup": "./scripts/setup.sh",
+    "setup-secrets": "./scripts/setup-secrets.sh",
+    "generate-wallets": "node scripts/generate-wallets.js",
+    "wallet-info": "node scripts/wallet-info.js",
+    "nag": "cdk synth --app 'npx ts-node bin/solana-invoice.ts' --quiet && echo 'CDK Nag evaluation completed'",
+    "lint": "eslint . --ext .js,.ts",
+    "lint:fix": "eslint . --ext .js,.ts --fix",
+    "format": "prettier --write \"**/*.{js,ts,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,ts,json,md}\""
+  }
+}
