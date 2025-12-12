@@ -23,3 +23,5 @@ if (process.env.SOLANA_PAYER_PRIVATE_KEY) {
 console.log('\n📝 Fund these addresses at:');
 console.log('  SOL: https://faucet.solana.com');
 console.log('  USDC: https://faucet.circle.com\n');
+console.log('  Note: The Hot Wallet needs to be funded with SOL. The Payer Wallet requires both SOL and USDC for testing payments.');
+
