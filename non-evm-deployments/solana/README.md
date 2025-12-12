@@ -180,7 +180,8 @@ Test complete payment flow (create invoice → send payment → verify):
 
 Payments can be sent by:
 
-- Manually sending funds to the invoice address using any browser-based Solana wallet
+- Manually sending funds to the invoice address using any browser-based Solana
+  wallet
 - Scanning the QR code with a mobile wallet
 - Running the following scripts:
 
