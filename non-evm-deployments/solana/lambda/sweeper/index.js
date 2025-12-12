@@ -29,7 +29,9 @@ const KMS_KEY_ID = process.env.KMS_KEY_ID;
 let hotWalletPublicKey;
 
 async function getHotWalletPublicKey() {
-  if (hotWalletPublicKey) return hotWalletPublicKey;
+  if (hotWalletPublicKey) {
+    return hotWalletPublicKey;
+  }
 
   const { PublicKey: kmsPublicKey } = await kms.getPublicKey({ KeyId: KMS_KEY_ID }).promise();
   const publicKeyBytes = new Uint8Array(kmsPublicKey).slice(-32);

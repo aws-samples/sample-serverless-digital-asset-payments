@@ -13,7 +13,9 @@ async function getKmsHotWallet() {
       { encoding: 'utf-8' }
     ).trim();
 
-    if (!keyId) return null;
+    if (!keyId) {
+      return null;
+    }
 
     const response = await kms.send(new GetPublicKeyCommand({ KeyId: keyId }));
     const pubkeyBytes = new Uint8Array(response.PublicKey).slice(-32);

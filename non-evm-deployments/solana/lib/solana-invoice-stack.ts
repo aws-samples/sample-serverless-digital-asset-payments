@@ -53,12 +53,6 @@ export class SolanaInvoiceStack extends cdk.Stack {
       keyUsage: 'SIGN_VERIFY',
     });
 
-    const hotWalletKmsKey = cdk.aws_kms.Key.fromKeyArn(
-      this,
-      'ImportedHotWalletKey',
-      hotWalletKmsKeyCfn.attrArn
-    );
-
     const paymentNotificationTopic = new sns.Topic(this, 'SolanaPaymentNotificationTopic', {
       displayName: 'Solana Payment Notifications',
     });
