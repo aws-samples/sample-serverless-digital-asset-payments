@@ -152,7 +152,7 @@ curl -X POST "${API_URL}generateInvoice" \
     "currency": "SPL",
     "tokenMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     "tokenSymbol": "USDC",
-    "amount": "5.00"
+    "amount": "0.25"
   }'
 ```
 
