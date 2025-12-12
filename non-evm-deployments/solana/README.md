@@ -76,7 +76,9 @@ npm run generate-wallets
 Creates treasury, hot, and test payer wallets, populating `.env` automatically.
 The script outputs all wallet addresses and funding instructions.
 
-**Note:** To use your own wallets, modify `SOLANA_TREASURY_ADDRESS`, `SOLANA_HOT_WALLET_PRIVATE_KEY`, and `SOLANA_PAYER_PRIVATE_KEY` in `.env` after running this script, then continue with deployment.
+**Note:** To use your own wallets, modify `SOLANA_TREASURY_ADDRESS`,
+`SOLANA_HOT_WALLET_PRIVATE_KEY`, and `SOLANA_PAYER_PRIVATE_KEY` in `.env` after
+running this script, then continue with deployment.
 
 ### 3. Fund Wallets
 
@@ -250,11 +252,13 @@ cdk destroy --app 'npx ts-node bin/solana-invoice.ts'
 - Mnemonic and hot wallet keys stored in AWS Secrets Manager
 - Secrets restricted to specific Lambda function roles
 - API Gateway secured with API keys
-- For security, the treasury wallet is recommended to be an offline hardware wallet 
+- For security, the treasury wallet is recommended to be an offline hardware
+  wallet
 
 ## Troubleshooting
 
 1. **Invoice Generation Fails**: Verify mnemonic is in Secrets Manager
 2. **Payments Not Detected**: Check RPC URL and wait for confirmation
 3. **Sweeping Issues**: Ensure hot wallet has sufficient SOL for rent/fees
-4. **SPL Token Issues**: Verify token mint address and ensure Associated Token Account exists
+4. **SPL Token Issues**: Verify token mint address and ensure Associated Token
+   Account exists
