@@ -63,6 +63,7 @@ For detailed deployment steps, continue below.
 ## Deployment
 
 **Note:** Ensure AWS CLI is configured with your desired region before starting:
+
 ```bash
 aws configure
 # Set your region (e.g., us-east-1)

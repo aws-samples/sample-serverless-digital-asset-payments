@@ -11,7 +11,7 @@ const app = new cdk.App();
 cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
 new SolanaInvoiceStack(app, 'SolanaInvoiceStack', {
-    env: {
-        region: process.env.CDK_DEFAULT_REGION || process.env.AWS_REGION || 'us-east-1',
-    },
+  env: {
+    region: process.env.CDK_DEFAULT_REGION || process.env.AWS_REGION || 'us-east-1',
+  },
 });
