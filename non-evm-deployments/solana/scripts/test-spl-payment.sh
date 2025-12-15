@@ -34,7 +34,7 @@ echo "📍 Address: $INVOICE_ADDRESS"
 echo ""
 
 echo "💸 Sending payment..."
-node scripts/send-spl-payment.js "$INVOICE_ADDRESS" "$AMOUNT" "$TOKEN_MINT"
+node scripts/send-spl-payment.js "$INVOICE_ADDRESS" "$AMOUNT" "$TOKEN_MINT" 2>/dev/null
 echo ""
 
 echo "⏳ Waiting 5s for transaction confirmation..."
