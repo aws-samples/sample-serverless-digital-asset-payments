@@ -211,9 +211,6 @@ exports.handler = async event => {
           continue;
         }
 
-        const feeBuffer = 10000; // 0.00001 SOL buffer for signing
-        await ensureSufficientRent(invoiceKeypair, feeBuffer, invoiceId);
-
         console.log(`Sweeping ${tokenBalance} ${tokenSymbol} to treasury...`);
 
         const hotWallet = await getHotWalletPublicKey();
