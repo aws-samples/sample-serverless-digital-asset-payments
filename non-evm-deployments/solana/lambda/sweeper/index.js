@@ -95,12 +95,14 @@ This error may require manual intervention to ensure funds are properly swept.
 
 async function ensureSufficientRent(invoiceKeypair, requiredLamports, invoiceId) {
   const balance = await connection.getBalance(invoiceKeypair.publicKey);
+  const rentExempt = await connection.getMinimumBalanceForRentExemption(0);
+  const minRequired = Math.max(requiredLamports, rentExempt);
 
-  if (balance < requiredLamports) {
+  if (balance < minRequired) {
     console.log(
-      `Insufficient SOL for rent/fees on invoice ${invoiceId}: ${balance} < ${requiredLamports}`
+      `Insufficient SOL for rent/fees on invoice ${invoiceId}: ${balance} < ${minRequired}`
     );
-    const topUpAmount = requiredLamports - balance;
+    const topUpAmount = minRequired - balance;
     console.log(`Topping up ${topUpAmount / LAMPORTS_PER_SOL} SOL...`);
 
     const hotWallet = await getHotWalletPublicKey();
