@@ -93,41 +93,6 @@ This error may require manual intervention to ensure funds are properly swept.
   }
 }
 
-async function ensureSufficientRent(invoiceKeypair, requiredLamports, invoiceId) {
-  const balance = await connection.getBalance(invoiceKeypair.publicKey);
-  const rentExempt = await connection.getMinimumBalanceForRentExemption(0);
-  const minRequired = Math.max(requiredLamports, rentExempt);
-
-  if (balance < minRequired) {
-    console.log(
-      `Insufficient SOL for rent/fees on invoice ${invoiceId}: ${balance} < ${minRequired}`
-    );
-    const topUpAmount = minRequired - balance;
-    console.log(`Topping up ${topUpAmount / LAMPORTS_PER_SOL} SOL...`);
-
-    const hotWallet = await getHotWalletPublicKey();
-    const transaction = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: hotWallet,
-        toPubkey: invoiceKeypair.publicKey,
-        lamports: topUpAmount,
-      })
-    );
-
-    transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    transaction.feePayer = hotWallet;
-
-    const message = transaction.serializeMessage();
-    const signature = await signWithKms(message);
-    transaction.addSignature(hotWallet, Buffer.from(signature));
-
-    await connection.sendRawTransaction(transaction.serialize());
-    return await connection.getBalance(invoiceKeypair.publicKey);
-  }
-
-  return balance;
-}
-
 exports.handler = async event => {
   console.log('Fetching secrets from SecretsManager...');
 
