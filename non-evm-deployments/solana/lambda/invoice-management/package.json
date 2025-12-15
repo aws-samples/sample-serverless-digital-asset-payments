@@ -2,6 +2,7 @@
   "name": "solana-invoice-management-lambda",
   "version": "1.0.0",
   "dependencies": {
-    "aws-sdk": "^2.1692.0"
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0"
   }
 }

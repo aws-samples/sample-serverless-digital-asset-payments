@@ -46,6 +46,7 @@ uses Solana-specific libraries and transaction structures:
 1. AWS Account
 2. Node.js 18.x or later
 3. AWS CDK CLI installed (`npm install -g aws-cdk`)
+4. AWS CLI configured (`aws configure`) with your desired region
 
 ## Quick Start
 
@@ -60,6 +61,12 @@ npm run setup
 For detailed deployment steps, continue below.
 
 ## Deployment
+
+**Note:** Ensure AWS CLI is configured with your desired region before starting:
+```bash
+aws configure
+# Set your region (e.g., us-east-1)
+```
 
 ### 1. Install Dependencies
 
@@ -170,7 +177,7 @@ Test complete payment flow (create invoice → send payment → verify):
 # Test SOL payment with custom amount
 ./scripts/test-sol-payment.sh 0.05
 
-# Test USDC payment (default 1.00 USDC)
+# Test USDC payment (default 0.25 USDC)
 ./scripts/test-spl-payment.sh
 
 # Test USDC payment with custom amount

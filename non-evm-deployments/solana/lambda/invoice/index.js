@@ -1,12 +1,15 @@
-const AWS = require('aws-sdk');
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { Keypair } = require('@solana/web3.js');
 const { derivePath } = require('ed25519-hd-key');
 const { mnemonicToSeedSync } = require('bip39');
 const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
 
-const secretsManager = new AWS.SecretsManager();
-const dynamo = new AWS.DynamoDB.DocumentClient();
+const secretsManager = new SecretsManagerClient({});
+const dynamoClient = new DynamoDBClient({});
+const dynamo = DynamoDBDocumentClient.from(dynamoClient);
 
 const TABLE = process.env.TABLE;
 const COUNTER_TABLE = process.env.COUNTER_TABLE;
@@ -23,15 +26,15 @@ exports.handler = async event => {
   }
 
   console.log('Fetching mnemonic from SecretsManager...');
-  const secret = await secretsManager
-    .getSecretValue({ SecretId: 'solana-wallet-mnemonic' })
-    .promise();
+  const secret = await secretsManager.send(
+    new GetSecretValueCommand({ SecretId: 'solana-wallet-mnemonic' })
+  );
   const { mnemonic } = JSON.parse(secret.SecretString);
   console.log('Mnemonic successfully retrieved.');
 
   console.log('Incrementing Solana wallet index...');
-  const counterResult = await dynamo
-    .update({
+  const counterResult = await dynamo.send(
+    new UpdateCommand({
       TableName: COUNTER_TABLE,
       Key: COUNTER_KEY,
       UpdateExpression: 'SET currentIndex = if_not_exists(currentIndex, :start) + :inc',
@@ -41,7 +44,7 @@ exports.handler = async event => {
       },
       ReturnValues: 'UPDATED_NEW',
     })
-    .promise();
+  );
 
   const index = counterResult.Attributes.currentIndex;
   const path = `m/44'/501'/${index}'/0'`;
@@ -74,12 +77,12 @@ exports.handler = async event => {
 
   console.log(`Storing invoice: ${JSON.stringify(item, null, 2)}`);
 
-  await dynamo
-    .put({
+  await dynamo.send(
+    new PutCommand({
       TableName: TABLE,
       Item: item,
     })
-    .promise();
+  );
 
   console.log(`Invoice ${invoiceId} created successfully.`);
 

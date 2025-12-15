@@ -4,6 +4,8 @@
   "dependencies": {
     "@solana/web3.js": "^1.95.8",
     "@solana/spl-token": "^0.4.9",
-    "aws-sdk": "^2.1692.0"
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0",
+    "@aws-sdk/client-sns": "^3.0.0"
   }
 }

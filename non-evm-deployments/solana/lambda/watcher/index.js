@@ -1,16 +1,19 @@
-const AWS = require('aws-sdk');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, QueryCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
 const { Connection, PublicKey, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 const { getAccount, getAssociatedTokenAddress } = require('@solana/spl-token');
 
-const dynamo = new AWS.DynamoDB.DocumentClient();
-const sns = new AWS.SNS();
+const dynamoClient = new DynamoDBClient({});
+const dynamo = DynamoDBDocumentClient.from(dynamoClient);
+const sns = new SNSClient({});
 
 const connection = new Connection(process.env.SOLANA_RPC_URL, 'confirmed');
 const TABLE = process.env.TABLE;
 
 async function markPaid(invoiceId) {
-  await dynamo
-    .update({
+  await dynamo.send(
+    new UpdateCommand({
       TableName: TABLE,
       Key: { invoiceId },
       UpdateExpression: 'set #s = :paid, paidAt = :now',
@@ -20,7 +23,7 @@ async function markPaid(invoiceId) {
         ':now': new Date().toISOString(),
       },
     })
-    .promise();
+  );
 }
 
 async function notifyMerchant(invoice) {
@@ -37,30 +40,30 @@ Status: PAID ✅
 You may now proceed with order fulfillment.
     `.trim();
 
-  await sns
-    .publish({
+  await sns.send(
+    new PublishCommand({
       TopicArn: process.env.SNS_TOPIC_ARN,
       Message: messageBody,
       Subject: `Payment Received: Invoice ${invoice.invoiceId}`,
     })
-    .promise();
+  );
 }
 
 exports.handler = async () => {
   const processed = [];
   const failed = [];
 
-  const { Items } = await dynamo
-    .query({
+  const result = await dynamo.send(
+    new QueryCommand({
       TableName: TABLE,
       IndexName: 'status-index',
       KeyConditionExpression: '#s = :pending',
       ExpressionAttributeNames: { '#s': 'status' },
       ExpressionAttributeValues: { ':pending': 'pending' },
     })
-    .promise();
+  );
 
-  for (const invoice of Items) {
+  for (const invoice of result.Items) {
     const { invoiceId, address, currency, tokenMint, amount, tokenSymbol } = invoice;
 
     try {

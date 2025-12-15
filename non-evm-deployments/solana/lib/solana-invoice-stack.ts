@@ -53,6 +53,8 @@ export class SolanaInvoiceStack extends cdk.Stack {
       keyUsage: 'SIGN_VERIFY',
     });
 
+    hotWalletKmsKeyCfn.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
+
     const paymentNotificationTopic = new sns.Topic(this, 'SolanaPaymentNotificationTopic', {
       displayName: 'Solana Payment Notifications',
     });
@@ -217,6 +219,7 @@ export class SolanaInvoiceStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(15),
       reservedConcurrentExecutions: 1,
       logGroup: new logs.LogGroup(this, 'SolanaSweeperFunctionLogGroup', {
+        logGroupName: `/aws/lambda/${this.stackName}-SolanaSweeperFunction`,
         retention: logs.RetentionDays.ONE_MONTH,
         removalPolicy: cdk.RemovalPolicy.DESTROY,
       }),
@@ -317,7 +320,18 @@ export class SolanaInvoiceStack extends cdk.Stack {
         {
           id: 'AwsSolutions-IAM5',
           reason: 'DynamoDB GSI access requires wildcard permissions for index operations',
-          appliesTo: ['Resource::<SolanaInvoices*.Arn>/index/*', 'Resource::*'],
+          appliesTo: ['Resource::<SolanaInvoices58D74D47.Arn>/index/*', 'Resource::*'],
+        },
+      ],
+      true
+    );
+
+    NagSuppressions.addResourceSuppressions(
+      this,
+      [
+        {
+          id: 'AwsSolutions-L1',
+          reason: 'Using Node.js 22.x runtime - latest available version',
         },
       ],
       true

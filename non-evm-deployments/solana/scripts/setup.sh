@@ -56,6 +56,16 @@ generate_wallets() {
     fi
     
     npm run generate-wallets
+    
+    # Add AWS_REGION to .env if not present
+    if [ -f .env ] && ! grep -q "AWS_REGION" .env; then
+        DETECTED_REGION=$(aws configure get region 2>/dev/null || echo "$AWS_REGION")
+        if [ -n "$DETECTED_REGION" ]; then
+            sed -i.bak '1s/^/AWS_REGION='"$DETECTED_REGION"'\n/' .env && rm .env.bak
+            echo "✅ Added AWS_REGION=$DETECTED_REGION to .env"
+        fi
+    fi
+    
     echo "✅ Wallets generated"
 }
 
@@ -64,13 +74,13 @@ bootstrap_cdk() {
     cd "$PROJECT_ROOT"
     
     AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-    AWS_REGION=$(aws configure get region)
+    DETECTED_REGION=$(aws configure get region 2>/dev/null || echo "$AWS_REGION")
     
-    if aws cloudformation describe-stacks --stack-name CDKToolkit --region "$AWS_REGION" >/dev/null 2>&1; then
+    if aws cloudformation describe-stacks --stack-name CDKToolkit --region "$DETECTED_REGION" >/dev/null 2>&1; then
         echo "✅ CDK already bootstrapped"
     else
         echo "Bootstrapping CDK..."
-        cdk bootstrap "aws://$AWS_ACCOUNT/$AWS_REGION"
+        cdk bootstrap "aws://$AWS_ACCOUNT/$DETECTED_REGION"
         echo "✅ CDK bootstrapped"
     fi
 }

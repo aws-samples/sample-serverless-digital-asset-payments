@@ -1,4 +1,9 @@
-const AWS = require('aws-sdk');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { unmarshall } = require('@aws-sdk/util-dynamodb');
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
+const { KMSClient, GetPublicKeyCommand, SignCommand } = require('@aws-sdk/client-kms');
+const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
 const {
   Connection,
   Keypair,
@@ -15,10 +20,11 @@ const {
 const { derivePath } = require('ed25519-hd-key');
 const { mnemonicToSeedSync } = require('bip39');
 
-const dynamo = new AWS.DynamoDB.DocumentClient();
-const secretsManager = new AWS.SecretsManager();
-const kms = new AWS.KMS();
-const sns = new AWS.SNS();
+const dynamoClient = new DynamoDBClient({});
+const dynamo = DynamoDBDocumentClient.from(dynamoClient);
+const secretsManager = new SecretsManagerClient({});
+const kms = new KMSClient({});
+const sns = new SNSClient({});
 
 const connection = new Connection(process.env.SOLANA_RPC_URL, 'confirmed');
 const TREASURY_PUBLIC_KEY = new PublicKey(process.env.SOLANA_TREASURY_PUBLIC_KEY);
@@ -33,22 +39,22 @@ async function getHotWalletPublicKey() {
     return hotWalletPublicKey;
   }
 
-  const { PublicKey: kmsPublicKey } = await kms.getPublicKey({ KeyId: KMS_KEY_ID }).promise();
-  const publicKeyBytes = new Uint8Array(kmsPublicKey).slice(-32);
+  const result = await kms.send(new GetPublicKeyCommand({ KeyId: KMS_KEY_ID }));
+  const publicKeyBytes = new Uint8Array(result.PublicKey).slice(-32);
   hotWalletPublicKey = new PublicKey(publicKeyBytes);
   return hotWalletPublicKey;
 }
 
 async function signWithKms(message) {
-  const { Signature } = await kms
-    .sign({
+  const result = await kms.send(
+    new SignCommand({
       KeyId: KMS_KEY_ID,
       Message: message,
       MessageType: 'RAW',
       SigningAlgorithm: 'ED25519_SHA_512',
     })
-    .promise();
-  return new Uint8Array(Signature);
+  );
+  return new Uint8Array(result.Signature);
 }
 
 async function sendErrorNotification(error, invoiceId) {
@@ -73,13 +79,13 @@ Timestamp: ${new Date().toISOString()}
 This error may require manual intervention to ensure funds are properly swept.
         `.trim();
 
-    await sns
-      .publish({
+    await sns.send(
+      new PublishCommand({
         TopicArn: SNS_TOPIC_ARN,
         Message: messageBody,
         Subject: `⚠️ Solana Sweeper Error: Invoice ${invoiceId}`,
       })
-      .promise();
+    );
 
     console.log(`Error notification sent for invoice ${invoiceId}`);
   } catch (notificationError) {
@@ -123,9 +129,9 @@ async function ensureSufficientRent(invoiceKeypair, requiredLamports, invoiceId)
 exports.handler = async event => {
   console.log('Fetching secrets from SecretsManager...');
 
-  const mnemonicSecret = await secretsManager
-    .getSecretValue({ SecretId: 'solana-wallet-mnemonic' })
-    .promise();
+  const mnemonicSecret = await secretsManager.send(
+    new GetSecretValueCommand({ SecretId: 'solana-wallet-mnemonic' })
+  );
   const { mnemonic } = JSON.parse(mnemonicSecret.SecretString);
 
   let sweptCount = 0;
@@ -136,7 +142,7 @@ exports.handler = async event => {
       continue;
     }
 
-    const newImage = AWS.DynamoDB.Converter.unmarshall(record.dynamodb.NewImage);
+    const newImage = unmarshall(record.dynamodb.NewImage);
 
     if (newImage.status !== 'paid') {
       console.log(`Skipping invoice ${newImage.invoiceId} with status ${newImage.status}`);
@@ -203,8 +209,8 @@ exports.handler = async event => {
           continue;
         }
 
-        const rentExemption = await connection.getMinimumBalanceForRentExemption(0);
-        await ensureSufficientRent(invoiceKeypair, rentExemption * 2, invoiceId);
+        const feeBuffer = 10000; // 0.00001 SOL buffer for signing
+        await ensureSufficientRent(invoiceKeypair, feeBuffer, invoiceId);
 
         console.log(`Sweeping ${tokenBalance} ${tokenSymbol} to treasury...`);
 
@@ -230,6 +236,11 @@ exports.handler = async event => {
           createTransferInstruction(sourceAta, destAta, invoiceKeypair.publicKey, tokenBalance)
         );
 
+        const { createCloseAccountInstruction } = require('@solana/spl-token');
+        transaction.add(
+          createCloseAccountInstruction(sourceAta, hotWallet, invoiceKeypair.publicKey)
+        );
+
         transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
         transaction.feePayer = hotWallet;
 
@@ -242,8 +253,8 @@ exports.handler = async event => {
         console.log(`SPL token sweep complete for invoice ${invoiceId}`);
       }
 
-      await dynamo
-        .update({
+      await dynamo.send(
+        new UpdateCommand({
           TableName: TABLE,
           Key: { invoiceId },
           UpdateExpression: 'set #s = :swept, sweptAt = :now',
@@ -253,7 +264,7 @@ exports.handler = async event => {
             ':now': new Date().toISOString(),
           },
         })
-        .promise();
+      );
 
       console.log(`Invoice ${invoiceId} marked as swept.`);
       sweptCount++;

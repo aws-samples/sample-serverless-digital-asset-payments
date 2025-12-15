@@ -4,12 +4,22 @@ STACK_NAME="SolanaInvoiceStack"
 
 echo "🔐 Setting up Solana secrets and KMS key..."
 
-AWS_REGION=$(aws configure get region 2>&1)
+# Load AWS_REGION from .env file
+if [ -f .env ]; then
+  export $(grep -v '^#' .env | grep AWS_REGION | xargs)
+fi
 
-if [ $? -ne 0 ] || [ -z "$AWS_REGION" ]; then
-  echo "❌ Error: AWS region not configured. Run 'aws configure' first."
+# Fallback to AWS CLI configured region or AWS_REGION env variable (CloudShell)
+if [ -z "$AWS_REGION" ]; then
+  AWS_REGION=$(aws configure get region 2>/dev/null)
+fi
+
+if [ -z "$AWS_REGION" ]; then
+  echo "❌ Error: AWS region not configured. Set AWS_REGION in .env or run 'aws configure'."
   exit 1
 fi
+
+echo "📍 Using region: $AWS_REGION"
 
 echo "📝 Fetching outputs from stack..."
 MNEMONIC_SECRET=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \

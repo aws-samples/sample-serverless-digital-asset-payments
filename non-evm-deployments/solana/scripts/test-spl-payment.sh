@@ -4,14 +4,16 @@ set -e
 source .env
 
 export STACK_NAME="SolanaInvoiceStack"
-export API_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+export AWS_REGION=${AWS_REGION:-us-east-1}
+
+export API_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" \
   --query "Stacks[0].Outputs[?OutputKey=='SolanaInvoiceApiBaseUrl'].OutputValue" --output text)
-export API_KEY_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+export API_KEY_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" \
   --query "Stacks[0].Outputs[?OutputKey=='SolanaInvoiceApiKeyId'].OutputValue" --output text)
-export API_KEY=$(aws apigateway get-api-key --api-key "$API_KEY_ID" --include-value \
+export API_KEY=$(aws apigateway get-api-key --api-key "$API_KEY_ID" --region "$AWS_REGION" --include-value \
   --query 'value' --output text 2>/dev/null)
 
-AMOUNT=${1:-1.00}
+AMOUNT=${1:-0.25}
 TOKEN_MINT=${2:-4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU}
 TOKEN_SYMBOL=${3:-USDC}
 

@@ -1,5 +1,8 @@
-const AWS = require('aws-sdk');
-const dynamo = new AWS.DynamoDB.DocumentClient();
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, QueryCommand, ScanCommand, UpdateCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+
+const dynamoClient = new DynamoDBClient({});
+const dynamo = DynamoDBDocumentClient.from(dynamoClient);
 
 const TABLE = process.env.TABLE;
 
@@ -56,7 +59,7 @@ async function getAllInvoices(queryParams) {
       ExclusiveStartKey: lastKey,
     };
 
-    const result = await dynamo.query(params).promise();
+    const result = await dynamo.send(new QueryCommand(params));
 
     return {
       statusCode: 200,
@@ -74,7 +77,7 @@ async function getAllInvoices(queryParams) {
       ExclusiveStartKey: lastKey,
     };
 
-    const result = await dynamo.scan(params).promise();
+    const result = await dynamo.send(new ScanCommand(params));
 
     return {
       statusCode: 200,
@@ -89,12 +92,12 @@ async function getAllInvoices(queryParams) {
 }
 
 async function getInvoice(invoiceId) {
-  const result = await dynamo
-    .get({
+  const result = await dynamo.send(
+    new GetCommand({
       TableName: TABLE,
       Key: { invoiceId },
     })
-    .promise();
+  );
 
   if (!result.Item) {
     return {
@@ -122,12 +125,12 @@ async function updateInvoice(invoiceId, body) {
     };
   }
 
-  const getResult = await dynamo
-    .get({
+  const getResult = await dynamo.send(
+    new GetCommand({
       TableName: TABLE,
       Key: { invoiceId },
     })
-    .promise();
+  );
 
   if (!getResult.Item) {
     return {
@@ -159,8 +162,8 @@ async function updateInvoice(invoiceId, body) {
     };
   }
 
-  await dynamo
-    .update({
+  await dynamo.send(
+    new UpdateCommand({
       TableName: TABLE,
       Key: { invoiceId },
       UpdateExpression: 'set #s = :status, updatedAt = :now',
@@ -170,7 +173,7 @@ async function updateInvoice(invoiceId, body) {
         ':now': new Date().toISOString(),
       },
     })
-    .promise();
+  );
 
   return {
     statusCode: 200,
@@ -180,12 +183,12 @@ async function updateInvoice(invoiceId, body) {
 }
 
 async function deleteInvoice(invoiceId) {
-  const getResult = await dynamo
-    .get({
+  const getResult = await dynamo.send(
+    new GetCommand({
       TableName: TABLE,
       Key: { invoiceId },
     })
-    .promise();
+  );
 
   if (!getResult.Item) {
     return {
@@ -207,12 +210,12 @@ async function deleteInvoice(invoiceId) {
     };
   }
 
-  await dynamo
-    .delete({
+  await dynamo.send(
+    new DeleteCommand({
       TableName: TABLE,
       Key: { invoiceId },
     })
-    .promise();
+  );
 
   return {
     statusCode: 200,
