@@ -159,7 +159,7 @@ curl -X POST "${API_URL}generateInvoice" \
   -H "X-API-Key: $API_KEY" \
   -d '{
     "currency": "SPL",
-    "tokenMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "tokenMint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
     "tokenSymbol": "USDC",
     "amount": "0.25"
   }'
