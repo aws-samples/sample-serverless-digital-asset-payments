@@ -1,0 +1,22 @@
+!jest.config.js
+*.d.ts
+*.js
+!scripts/*.js
+!lambda/**/*.js
+node_modules
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+
+# Environment
+.env
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
