@@ -1,0 +1,23 @@
+{
+  "name": "sui-payment-infra",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "cdk": "cdk",
+    "setup": "npm install && npm run build && npm run deploy && npm run setup-secrets",
+    "deploy": "cdk deploy --require-approval never",
+    "setup-secrets": "node scripts/setup-secrets.js",
+    "test-payment": "./scripts/test-payment.sh",
+    "wallet-info": "node scripts/wallet-info.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "aws-cdk": "^2.150.0",
+    "cdk-nag": "^2.37.55",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.150.0",
+    "constructs": "^10.0.0"
+  }
+}

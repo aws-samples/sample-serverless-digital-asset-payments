@@ -1,0 +1,17 @@
+[package]
+name = "shared"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sui-sdk = { workspace = true }
+sui-types = { workspace = true }
+fastcrypto = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+aws-sdk-dynamodb = { workspace = true }
+aws-sdk-secretsmanager = { workspace = true }
+anyhow = { workspace = true }
+bip39 = { workspace = true }
+slip10_ed25519 = { workspace = true }
+ed25519-dalek = "2.1"

@@ -1,0 +1,28 @@
+[package]
+name = "sweeper"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "bootstrap"
+path = "src/main.rs"
+
+[dependencies]
+shared = { path = "../shared" }
+lambda_runtime = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+aws-config = { workspace = true }
+aws-sdk-dynamodb = { workspace = true }
+aws-sdk-secretsmanager = { workspace = true }
+aws-sdk-sns = { workspace = true }
+aws-sdk-cloudwatch = { workspace = true }
+aws-sdk-kms = { workspace = true }
+sui-sdk = { workspace = true }
+sui-types = { workspace = true }
+fastcrypto = { workspace = true }
+anyhow = { workspace = true }
+bcs = "0.1"
+chrono = "0.4"
+shared-crypto = { git = "https://github.com/MystenLabs/sui", tag = "testnet-v1.67.1" }
