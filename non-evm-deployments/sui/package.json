@@ -1,0 +1,25 @@
+{
+  "name": "sui-payment-infra",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "cdk": "cdk",
+    "generate-wallets": "node scripts/generate-wallets.js",
+    "setup": "npm install && npm run generate-wallets && npm run deploy && npm run setup-secrets",
+    "deploy": "cdk deploy --require-approval never",
+    "setup-secrets": "node scripts/setup-secrets.js",
+    "test-payment": "./scripts/test-payment.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "aws-cdk": "^2.150.0",
+    "cdk-nag": "^2.37.55",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@mysten/sui": "^2.9.1",
+    "aws-cdk-lib": "^2.150.0",
+    "bip39": "^3.1.0",
+    "constructs": "^10.0.0"
+  }
+}
