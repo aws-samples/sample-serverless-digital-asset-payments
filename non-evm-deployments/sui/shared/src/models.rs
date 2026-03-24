@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Invoice {
     pub invoice_id: String,
-    pub amount: u64,
+    pub amount: f64,
     pub recipient_address: String,
     pub expiry: i64,
     pub reference_id: String,

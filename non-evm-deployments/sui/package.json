@@ -9,7 +9,8 @@
     "setup": "./scripts/setup.sh",
     "deploy": "cdk deploy --require-approval never",
     "setup-secrets": "node scripts/setup-secrets.js",
-    "test-payment": "./scripts/test-payment.sh"
+    "test-payment": "./scripts/test-payment.sh",
+    "get-kms-address": "node scripts/get-kms-address.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
@@ -19,6 +20,8 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudformation": "^3.1016.0",
+    "@aws-sdk/client-kms": "^3.1016.0",
     "@aws-sdk/client-secrets-manager": "^3.1015.0",
     "@mysten/sui": "^2.9.1",
     "aws-cdk-lib": "^2.150.0",

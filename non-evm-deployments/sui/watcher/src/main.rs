@@ -86,21 +86,34 @@ async fn check_payments(
             None => continue,
         };
         
-        let expected_amount: u64 = match item.get("amount")
+        let expected_amount: f64 = match item.get("amount")
             .and_then(|v| v.as_n().ok())
             .and_then(|n| n.parse().ok()) {
             Some(amt) => amt,
             None => continue,
         };
-        
+
         // Check if this is a token invoice
         let token_type = item.get("token_type")
             .and_then(|v| v.as_s().ok())
             .map(|s| s.to_string());
-        
+
         let token_address = item.get("token_address")
             .and_then(|v| v.as_s().ok())
             .map(|s| s.to_string());
+
+        let token_decimals: u8 = item.get("token_decimals")
+            .and_then(|v| v.as_n().ok())
+            .and_then(|n| n.parse().ok())
+            .unwrap_or(0);
+
+        // Convert human-readable amount to native units for balance comparison.
+        // Native SUI: multiply by 1e9 (MIST). Tokens: multiply by 10^decimals.
+        let expected_native: u128 = if token_type.as_deref() == Some("token") {
+            (expected_amount * 10f64.powi(token_decimals as i32)).round() as u128
+        } else {
+            (expected_amount * 1_000_000_000.0).round() as u128
+        };
         
         eprintln!("🔎 Checking invoice {} at address {} (type: {:?})", 
             invoice_id, address, token_type.as_deref().unwrap_or("native"));
@@ -143,9 +156,9 @@ async fn check_payments(
             }
         };
         
-        eprintln!("💰 Balance: {} (expected: {})", balance, expected_amount);
-        
-        if balance >= expected_amount as u128 {
+        eprintln!("💰 Balance: {} (expected native units: {})", balance, expected_native);
+
+        if balance >= expected_native {
             eprintln!("✅ Payment detected for invoice {}", invoice_id);
             payments_detected += 1;
             

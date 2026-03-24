@@ -166,9 +166,8 @@ export class SuiPaymentStack extends cdk.Stack {
         required: ['amount', 'reference_id', 'expiry_seconds'],
         properties: {
           amount: {
-            type: apigateway.JsonSchemaType.INTEGER,
-            minimum: 1,
-            maximum: 1000000000000, // 1000 SUI max
+            type: apigateway.JsonSchemaType.NUMBER,
+            exclusiveMinimum: 0,
           },
           reference_id: {
             type: apigateway.JsonSchemaType.STRING,
@@ -571,21 +570,7 @@ export class SuiPaymentStack extends cdk.Stack {
       })
     );
 
-    // Row 4: Custom Metrics (Log-based)
-    const invoiceCreatedMetric = new cloudwatch.Metric({
-      namespace: 'SUIPayment',
-      metricName: 'InvoicesCreated',
-      statistic: 'Sum',
-      period: cdk.Duration.minutes(5),
-    });
-
-    const paymentDetectedMetric = new cloudwatch.Metric({
-      namespace: 'SUIPayment',
-      metricName: 'PaymentsDetected',
-      statistic: 'Sum',
-      period: cdk.Duration.minutes(5),
-    });
-
+    // Row 4: Sweep custom metrics (emitted by sweeper Lambda)
     const sweepSuccessMetric = new cloudwatch.Metric({
       namespace: 'SUIPayment',
       metricName: 'SweepsSuccessful',
@@ -602,8 +587,8 @@ export class SuiPaymentStack extends cdk.Stack {
 
     dashboard.addWidgets(
       new cloudwatch.GraphWidget({
-        title: 'Invoice Lifecycle',
-        left: [invoiceCreatedMetric, paymentDetectedMetric, sweepSuccessMetric, sweepFailedMetric],
+        title: 'Sweep Results',
+        left: [sweepSuccessMetric, sweepFailedMetric],
         width: 24,
       })
     );

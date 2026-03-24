@@ -180,7 +180,7 @@ curl -X POST "${API_URL}create-invoice" \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
   -d '{
-    "amount": 100000000,
+    "amount": 0.1,
     "reference_id": "order-123",
     "expiry_seconds": 3600
   }'
@@ -193,7 +193,7 @@ curl -X POST "${API_URL}create-invoice" \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
   -d '{
-    "amount": 1000000,
+    "amount": 0.01,
     "reference_id": "order-124",
     "expiry_seconds": 3600,
     "token_type": "token",
@@ -202,6 +202,10 @@ curl -X POST "${API_URL}create-invoice" \
     "token_decimals": 6
   }'
 ```
+
+> **Amounts are always human-readable.** Use `0.1` for 0.1 SUI, `0.01` for
+> 0.01 USDC. The system converts to native units (MIST / token decimals)
+> internally.
 
 Response:
 
@@ -259,6 +263,26 @@ curl -X DELETE "${API_URL}invoices/{invoiceId}" \
 
 **Note:** Only `pending` or `cancelled` invoices can be deleted.
 
+## Token Payments: Fund the KMS Hot Wallet
+
+Token payment sweeps (e.g. USDC) are **sponsored transactions** — the KMS
+hot wallet pays the gas fee so the invoice address never needs native SUI.
+Before processing any token invoices you must fund the KMS wallet with
+testnet SUI.
+
+```bash
+# Print the KMS hot wallet SUI address
+npm run get-kms-address
+```
+
+Then send testnet SUI to that address via the faucet:
+
+- Web: https://faucet.testnet.sui.io
+- CLI: `sui client faucet --address <kms-address>`
+
+> Native SUI invoices do **not** require this step — the invoice wallet pays
+> its own gas directly from the received funds.
+
 ## Testing Payments
 
 ### Automated Test Script
@@ -269,17 +293,16 @@ Test the complete payment flow (create invoice → send payment → verify):
 # Test with default amount (0.1 SUI)
 npm run test-payment
 
-# Test with custom amount (in MIST)
-./scripts/test-payment.sh 500000000
+# Test with custom amount
+./scripts/test-payment.sh 0.5
 ```
 
 ### Manual Testing
 
 1. **Create invoice** using the API
-2. **Fund the address** via SUI testnet faucet:
-   - Discord: https://discord.com/channels/916379725201563759/971488439931392130
-     (use `!faucet <address>`)
+2. **Fund the invoice address** via SUI testnet faucet:
    - Web: https://faucet.testnet.sui.io
+   - CLI: `sui client faucet --address <recipient_address>`
 3. **Wait for detection** (watcher runs every minute)
 4. **Verify sweep** to treasury address
 
@@ -303,7 +326,7 @@ Create a new payment invoice with a unique SUI address.
 
 ```json
 {
-  "amount": 100000000,
+  "amount": 0.1,
   "reference_id": "order-123",
   "expiry_seconds": 3600
 }
@@ -313,7 +336,7 @@ Create a new payment invoice with a unique SUI address.
 
 ```json
 {
-  "amount": 1000000,
+  "amount": 0.01,
   "reference_id": "order-124",
   "expiry_seconds": 3600,
   "token_type": "token",
@@ -325,8 +348,9 @@ Create a new payment invoice with a unique SUI address.
 
 **Parameters:**
 
-- `amount` (number, required): Payment amount in smallest unit (MIST for SUI,
-  token decimals for tokens)
+- `amount` (number, required): Payment amount in human-readable units (e.g.
+  `0.1` for 0.1 SUI, `0.01` for 0.01 USDC). The system converts to native
+  units internally.
 - `reference_id` (string, required): Your internal reference ID
 - `expiry_seconds` (number, required): Invoice expiration time in seconds
 - `token_type` (string, optional): Set to "token" for token payments (default:

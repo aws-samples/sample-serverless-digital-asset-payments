@@ -178,7 +178,7 @@ async fn sweep_funds(
                             "🚨 SUI Payment Alert - Invoice Failed\n\n\
                             Invoice ID: {}\n\
                             Recipient Address: {}\n\
-                            Amount: {} MIST\n\
+                            Amount: {}\n\
                             Attempts: {}/{}\n\
                             Last Error: {}\n\
                             Status: failed\n\n\
@@ -239,11 +239,13 @@ async fn sweep_funds(
                 let from_address = SuiAddress::from_str(recipient_address)
                     .map_err(|e| Error::from(format!("Invalid recipient address: {}", e)))?;
                 
-                let amount: u64 = new_image.get("amount")
+                let amount: f64 = new_image.get("amount")
                     .and_then(|v| v.get("N"))
                     .and_then(|v| v.as_str())
                     .and_then(|v| v.parse().ok())
-                    .unwrap_or(0);
+                    .unwrap_or(0.0);
+                // Convert human-readable SUI to MIST for native transfers
+                let amount_mist: u64 = (amount * 1_000_000_000.0).round() as u64;
                 
                 // Check if this is a token invoice
                 let token_type = new_image.get("token_type")
@@ -392,7 +394,7 @@ async fn sweep_funds(
                 } else {
                     // Native SUI transfer — invoice wallet is sender and gas payer
                     sui_client.transaction_builder()
-                        .transfer_sui(from_address, gas_coin, gas_budget, treasury_sui_address, Some(amount))
+                        .transfer_sui(from_address, gas_coin, gas_budget, treasury_sui_address, Some(amount_mist))
                         .await
                         .map_err(|e| Error::from(format!("Failed to build transaction: {}", e)))?
                 };

@@ -24,7 +24,7 @@ fn is_token_whitelisted(token_address: &str) -> bool {
 
 #[derive(Deserialize)]
 struct CreateInvoiceRequest {
-    amount: u64,
+    amount: f64,
     reference_id: String,
     expiry_seconds: i64,
     #[serde(default)]
@@ -49,7 +49,7 @@ struct ApiGatewayResponse {
 struct CreateInvoiceResponse {
     invoice_id: String,
     recipient_address: String,
-    amount: u64,
+    amount: f64,
     expiry: i64,
     qr_code_base64: String,
 }
