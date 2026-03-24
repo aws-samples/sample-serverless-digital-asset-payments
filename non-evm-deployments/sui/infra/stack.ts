@@ -8,12 +8,15 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as snsSubscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import * as kms from 'aws-cdk-lib/aws-kms';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 export class SuiPaymentStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -25,7 +28,8 @@ export class SuiPaymentStack extends cdk.Stack {
       partitionKey: { name: 'invoice_id', type: dynamodb.AttributeType.STRING },
       stream: dynamodb.StreamViewType.NEW_IMAGE,
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      pointInTimeRecovery: true, // Enable PITR for data protection
+      pointInTimeRecovery: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     invoiceTable.addGlobalSecondaryIndex({
@@ -37,23 +41,26 @@ export class SuiPaymentStack extends cdk.Stack {
       tableName: 'SuiWalletCounter',
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      pointInTimeRecovery: true, // Enable PITR for data protection
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Use existing secret (created manually)
-    const mnemonicSecret = secretsmanager.Secret.fromSecretNameV2(
-      this,
-      'SuiMnemonic',
-      'sui-payment-mnemonic'
-    );
-
-    // KMS Key for invoice wallet signing (production-grade security)
-    const signingKey = new kms.Key(this, 'InvoiceSigningKey', {
-      description: 'KMS key for signing SUI transactions from invoice wallets',
-      enableKeyRotation: true,
-      removalPolicy: cdk.RemovalPolicy.RETAIN, // Protect key from accidental deletion
-      alias: 'sui-payment-signing-key',
+    // Secret created by CDK; populated by npm run setup-secrets after deployment
+    const mnemonicSecret = new secretsmanager.Secret(this, 'SuiMnemonic', {
+      secretName: 'sui-payment-mnemonic',
+      description: 'SUI wallet mnemonic for invoice address derivation',
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      secretObjectValue: {},
     });
+
+    // Ed25519 KMS hot wallet key used to sponsor gas fees for token sweeps.
+    // keySpec ECC_NIST_EDWARDS25519 requires CfnKey (L1) — the L2 kms.Key
+    // construct does not yet expose this key spec.
+    const signingKeyCfn = new cdk.aws_kms.CfnKey(this, 'InvoiceSigningKey', {
+      description: 'Ed25519 KMS key for SUI transaction signing',
+      keySpec: 'ECC_NIST_EDWARDS25519',
+      keyUsage: 'SIGN_VERIFY',
+    });
+    signingKeyCfn.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
 
     // SNS Topic for notifications
     const notificationTopic = new sns.Topic(this, 'PaymentNotifications', {
@@ -117,25 +124,6 @@ export class SuiPaymentStack extends cdk.Stack {
     invoiceTable.grantReadWriteData(invoiceGenerator);
     counterTable.grantReadWriteData(invoiceGenerator);
     mnemonicSecret.grantRead(invoiceGenerator);
-
-    // Restrict mnemonic secret access to only invoice generator and sweeper
-    mnemonicSecret.addToResourcePolicy(
-      new iam.PolicyStatement({
-        sid: 'RestrictMnemonicSecretAccess',
-        effect: iam.Effect.DENY,
-        principals: [new iam.AnyPrincipal()],
-        actions: ['secretsmanager:GetSecretValue'],
-        resources: ['*'],
-        conditions: {
-          ArnNotEquals: {
-            'aws:PrincipalArn': [
-              invoiceGenerator.role?.roleArn || '',
-              // Sweeper role will be added after it's created
-            ].filter(arn => arn !== ''),
-          },
-        },
-      })
-    );
 
     // API Gateway
     const logGroup = new logs.LogGroup(this, 'ApiGatewayAccessLogs', {
@@ -330,8 +318,7 @@ export class SuiPaymentStack extends cdk.Stack {
       environment: {
         TREASURY_ADDRESS: treasuryAddress,
         ALERT_TOPIC_ARN: alertTopic.topicArn,
-        KMS_KEY_ID: signingKey.keyId,
-        USE_KMS_SIGNING: 'false', // Set to 'true' once KMS signing is implemented
+        KMS_KEY_ID: signingKeyCfn.attrKeyId,
         SUI_RPC_URL: suiRpcUrl,
       },
     });
@@ -339,24 +326,35 @@ export class SuiPaymentStack extends cdk.Stack {
     invoiceTable.grantReadWriteData(sweeper);
     mnemonicSecret.grantRead(sweeper);
     alertTopic.grantPublish(sweeper);
-    signingKey.grantSign(sweeper); // Grant KMS signing permission
-    
-    // Update mnemonic secret policy to include sweeper role
-    mnemonicSecret.addToResourcePolicy(
-      new iam.PolicyStatement({
-        sid: 'AllowSweeperAccess',
-        effect: iam.Effect.ALLOW,
-        principals: [new iam.ArnPrincipal(sweeper.role?.roleArn || '')],
-        actions: ['secretsmanager:GetSecretValue'],
-        resources: ['*'],
-      })
-    );
-    
-    // Grant CloudWatch PutMetricData permission
+    sweeper.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['kms:Sign', 'kms:GetPublicKey'],
+      resources: [signingKeyCfn.attrArn],
+    }));
     sweeper.addToRolePolicy(new iam.PolicyStatement({
       actions: ['cloudwatch:PutMetricData'],
       resources: ['*'],
     }));
+
+    // Single DENY policy applied after both Lambdas exist so both ARNs
+    // are in the exception list. A DENY always overrides an ALLOW in IAM,
+    // so the exception list must be complete before the policy is attached.
+    mnemonicSecret.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: 'RestrictMnemonicSecretAccess',
+        effect: iam.Effect.DENY,
+        principals: [new iam.AnyPrincipal()],
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: ['*'],
+        conditions: {
+          ArnNotEquals: {
+            'aws:PrincipalArn': [
+              invoiceGenerator.role?.roleArn || '',
+              sweeper.role?.roleArn || '',
+            ].filter(arn => arn !== ''),
+          },
+        },
+      })
+    );
 
     sweeper.addEventSource(new DynamoEventSource(invoiceTable, {
       startingPosition: lambda.StartingPosition.LATEST,
@@ -398,12 +396,12 @@ export class SuiPaymentStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'KmsKeyId', {
-      value: signingKey.keyId,
+      value: signingKeyCfn.attrKeyId,
       description: 'KMS Key ID for transaction signing',
     });
 
     new cdk.CfnOutput(this, 'KmsKeyArn', {
-      value: signingKey.keyArn,
+      value: signingKeyCfn.attrArn,
       description: 'KMS Key ARN for transaction signing',
     });
 

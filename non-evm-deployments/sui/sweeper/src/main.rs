@@ -1,5 +1,7 @@
 use aws_config::BehaviorVersion;
 use aws_sdk_dynamodb::{Client as DynamoClient, types::AttributeValue};
+use aws_sdk_kms::Client as KmsClient;
+use aws_sdk_kms::types::{MessageType, SigningAlgorithmSpec};
 use aws_sdk_secretsmanager::Client as SecretsClient;
 use aws_sdk_sns::Client as SnsClient;
 use aws_sdk_cloudwatch::{Client as CloudWatchClient, types::{MetricDatum, StandardUnit}};
@@ -7,13 +9,77 @@ use lambda_runtime::{service_fn, Error, LambdaEvent};
 use serde::Deserialize;
 use shared::{get_mnemonic, derive_keypair, Invoice};
 use sui_sdk::{SuiClientBuilder, types::base_types::SuiAddress, rpc_types::SuiTransactionBlockResponseOptions};
-use sui_types::crypto::Signer;
+use sui_types::crypto::{Signer, Signature, PublicKey, ToFromBytes};
 use sui_types::signature::GenericSignature;
 use shared_crypto::intent::{Intent, IntentMessage};
 use std::str::FromStr;
 use fastcrypto::hash::HashFunction;
+use fastcrypto::ed25519::Ed25519PublicKey;
 
 const MAX_RETRIES: u32 = 3;
+
+/// Derive the SUI address that corresponds to the Ed25519 KMS key.
+/// KMS returns a DER-encoded SubjectPublicKeyInfo; the raw 32-byte key
+/// is always the final 32 bytes of that structure.
+async fn kms_sui_address(kms: &KmsClient, key_id: &str) -> Result<(SuiAddress, [u8; 32]), Error> {
+    let resp = kms.get_public_key()
+        .key_id(key_id)
+        .send()
+        .await
+        .map_err(|e| Error::from(format!("KMS GetPublicKey failed: {}", e)))?;
+
+    let der = resp.public_key()
+        .ok_or_else(|| Error::from("KMS returned no public key"))?
+        .as_ref();
+
+    if der.len() < 32 {
+        return Err(Error::from("KMS public key response too short"));
+    }
+    let mut raw = [0u8; 32];
+    raw.copy_from_slice(&der[der.len() - 32..]);
+
+    let fc_pk = Ed25519PublicKey::from_bytes(&raw)
+        .map_err(|e| Error::from(format!("Failed to parse KMS Ed25519 public key: {:?}", e)))?;
+    let address = SuiAddress::from(&PublicKey::Ed25519(fc_pk));
+    Ok((address, raw))
+}
+
+/// Sign a 32-byte digest via KMS and return a SUI-formatted Signature
+/// (flag || 64-byte sig || 32-byte pubkey).
+async fn kms_sign(
+    kms: &KmsClient,
+    key_id: &str,
+    digest: &[u8; 32],
+    pubkey_bytes: &[u8; 32],
+) -> Result<Signature, Error> {
+    let resp = kms.sign()
+        .key_id(key_id)
+        .message(aws_sdk_kms::primitives::Blob::new(digest.to_vec()))
+        .message_type(MessageType::Raw)
+        .signing_algorithm(SigningAlgorithmSpec::Eddsa)
+        .send()
+        .await
+        .map_err(|e| Error::from(format!("KMS Sign failed: {}", e)))?;
+
+    let sig_bytes = resp.signature()
+        .ok_or_else(|| Error::from("KMS returned no signature"))?
+        .as_ref();
+
+    if sig_bytes.len() != 64 {
+        return Err(Error::from(format!(
+            "Unexpected KMS signature length: {} (expected 64)", sig_bytes.len()
+        )));
+    }
+
+    // SUI Ed25519 signature wire format: 0x00 || 64-byte sig || 32-byte pubkey
+    let mut buf = [0u8; 97];
+    buf[0] = 0x00;
+    buf[1..65].copy_from_slice(sig_bytes);
+    buf[65..97].copy_from_slice(pubkey_bytes);
+
+    Signature::from_bytes(&buf)
+        .map_err(|e| Error::from(format!("Failed to build SUI signature from KMS bytes: {:?}", e)))
+}
 
 #[derive(Deserialize)]
 struct DynamoStreamEvent {
@@ -38,6 +104,7 @@ async fn sweep_funds(
     secrets: &SecretsClient,
     sns: &SnsClient,
     cloudwatch: &CloudWatchClient,
+    kms: &KmsClient,
 ) -> Result<String, Error> {
     eprintln!("🚀 Sweeper started");
     let treasury_address = std::env::var("TREASURY_ADDRESS")
@@ -227,17 +294,28 @@ async fn sweep_funds(
                     continue;
                 }
                 
-                // Get gas coin (always native SUI)
+                // For token sweeps the KMS hot wallet sponsors gas so the
+                // invoice address does not need native SUI. For native SUI
+                // sweeps the invoice wallet pays its own gas as before.
+                let gas_owner = if is_token {
+                    let kms_key_id = std::env::var("KMS_KEY_ID")
+                        .map_err(|_| Error::from("KMS_KEY_ID env var not set"))?;
+                    let (addr, _) = kms_sui_address(kms, &kms_key_id).await?;
+                    addr
+                } else {
+                    from_address
+                };
+
                 let gas_coins = sui_client.coin_read_api()
-                    .get_coins(from_address, None, None, None)
+                    .get_coins(gas_owner, None, None, None)
                     .await
                     .map_err(|e| Error::from(format!("Failed to get gas coins: {}", e)))?;
-                
+
                 if gas_coins.data.is_empty() {
-                    eprintln!("   ⚠️  No gas coins found at address");
+                    eprintln!("   ⚠️  No gas coins found for gas owner {}", gas_owner);
                     continue;
                 }
-                
+
                 let gas_coin = gas_coins.data[0].coin_object_id;
                 
                 // Get gas price
@@ -294,20 +372,26 @@ async fn sweep_funds(
                     
                     let pt = ptb.finish();
                     
-                    // Get gas coin reference
                     let gas_coin_ref = gas_coins.data.iter()
                         .find(|c| c.coin_object_id == gas_coin)
                         .ok_or_else(|| Error::from("Gas coin not found"))?;
-                    
-                    TransactionData::new_programmable(
+
+                    // Sponsored transaction: invoice wallet is sender,
+                    // KMS hot wallet is gas sponsor.
+                    let kms_key_id = std::env::var("KMS_KEY_ID")
+                        .map_err(|_| Error::from("KMS_KEY_ID env var not set"))?;
+                    let (kms_address, _) = kms_sui_address(kms, &kms_key_id).await?;
+
+                    TransactionData::new_programmable_allow_sponsor(
                         from_address,
                         vec![(gas_coin, gas_coin_ref.version, gas_coin_ref.digest)],
                         pt,
                         gas_budget,
                         gas_price,
+                        kms_address,
                     )
                 } else {
-                    // Native SUI transfer
+                    // Native SUI transfer — invoice wallet is sender and gas payer
                     sui_client.transaction_builder()
                         .transfer_sui(from_address, gas_coin, gas_budget, treasury_sui_address, Some(amount))
                         .await
@@ -315,31 +399,45 @@ async fn sweep_funds(
                 };
                 eprintln!("   ✓ Built transaction");
                 
-                // Create intent message and sign
+                // Sign and execute the transaction.
+                //
+                // Native SUI sweeps: the invoice wallet is both sender and gas
+                // payer, so only one signature is needed (mnemonic-derived key).
+                //
+                // Token sweeps: the invoice wallet authorises the token transfer
+                // but the KMS hot wallet sponsors the gas. SUI sponsored
+                // transactions require both the sender and the sponsor to sign
+                // the same IntentMessage, so two signatures are submitted.
                 let intent_msg = IntentMessage::new(Intent::sui_transaction(), tx_data);
                 let raw_tx = bcs::to_bytes(&intent_msg).expect("bcs should not fail");
                 let mut hasher = sui_types::crypto::DefaultHash::default();
                 hasher.update(&raw_tx);
                 let digest = hasher.finalize().digest;
-                
-                // TODO: KMS Integration
-                // AWS KMS does not natively support Ed25519 signing (required for SUI)
-                // Options for production:
-                // 1. Use AWS CloudHSM (supports Ed25519)
-                // 2. Use KMS with ECDSA and convert to Ed25519 (complex)
-                // 3. Use external HSM with Ed25519 support
-                // For now, using in-memory signing with Secrets Manager
-                
-                let sui_sig = keypair.sign(&digest);
-                eprintln!("   ✓ Signed transaction");
-                
+
+                let sender_sig = keypair.sign(&digest);
+                eprintln!("   ✓ Signed transaction with invoice keypair");
+
+                let signatures: Vec<GenericSignature> = if is_token {
+                    let kms_key_id = std::env::var("KMS_KEY_ID")
+                        .map_err(|_| Error::from("KMS_KEY_ID env var not set"))?;
+                    let (_, kms_pubkey_bytes) = kms_sui_address(kms, &kms_key_id).await?;
+                    let kms_sig = kms_sign(kms, &kms_key_id, &digest, &kms_pubkey_bytes).await?;
+                    eprintln!("   ✓ Signed transaction with KMS gas-sponsor key");
+                    vec![
+                        GenericSignature::Signature(sender_sig),
+                        GenericSignature::Signature(kms_sig),
+                    ]
+                } else {
+                    vec![GenericSignature::Signature(sender_sig)]
+                };
+
                 // Execute transaction
                 eprintln!("   → Executing transaction...");
                 let response = match sui_client.quorum_driver_api()
                     .execute_transaction_block(
                         sui_types::transaction::Transaction::from_generic_sig_data(
                             intent_msg.value,
-                            vec![GenericSignature::Signature(sui_sig)],
+                            signatures,
                         ),
                         SuiTransactionBlockResponseOptions::default(),
                         None,
@@ -413,13 +511,15 @@ async fn main() -> Result<(), Error> {
     let secrets = SecretsClient::new(&config);
     let sns = SnsClient::new(&config);
     let cloudwatch = CloudWatchClient::new(&config);
-    
+    let kms = KmsClient::new(&config);
+
     lambda_runtime::run(service_fn(|event| {
         let dynamo = dynamo.clone();
         let secrets = secrets.clone();
         let sns = sns.clone();
         let cloudwatch = cloudwatch.clone();
-        async move { sweep_funds(event, &dynamo, &secrets, &sns, &cloudwatch).await }
+        let kms = kms.clone();
+        async move { sweep_funds(event, &dynamo, &secrets, &sns, &cloudwatch, &kms).await }
     }))
     .await
 }

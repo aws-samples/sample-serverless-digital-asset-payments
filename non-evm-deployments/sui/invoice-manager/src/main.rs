@@ -33,55 +33,73 @@ async fn handle_request(event: Request, dynamo: &DynamoClient) -> Result<Respons
 async fn list_invoices(event: Request, dynamo: &DynamoClient) -> Result<Response<Body>, Error> {
     eprintln!("📋 Listing invoices");
     let query_params = event.query_string_parameters();
-    
+
     let status = query_params.first("status").map(|s| s.to_string());
     let limit = query_params.first("limit")
         .and_then(|s| s.parse::<i32>().ok())
         .unwrap_or(50)
         .min(100);
-    
+
     eprintln!("   Status filter: {:?}, Limit: {}", status, limit);
-    
-    let mut request = dynamo.scan().table_name(Invoice::table_name()).limit(limit);
-    
-    if let Some(status_filter) = status {
-        request = request
-            .filter_expression("#status = :status")
+
+    // When a status filter is provided use the status-index GSI so DynamoDB
+    // only reads matching items. Fall back to a full scan only when no filter
+    // is given (i.e. the caller wants all invoices regardless of status).
+    let (items, last_evaluated_key) = if let Some(status_filter) = status {
+        let mut req = dynamo
+            .query()
+            .table_name(Invoice::table_name())
+            .index_name("status-index")
+            .key_condition_expression("#status = :status")
             .expression_attribute_names("#status", "status")
-            .expression_attribute_values(":status", AttributeValue::S(status_filter));
-    }
-    
-    if let Some(last_key) = query_params.first("lastKey") {
-        request = request.exclusive_start_key("invoice_id", AttributeValue::S(last_key.to_string()));
-    }
-    
-    let response = request.send().await.map_err(|e| Error::from(e.to_string()))?;
-    
-    eprintln!("   Found {} items", response.items().len());
-    
-    let invoices: Vec<serde_json::Value> = response.items()
+            .expression_attribute_values(":status", AttributeValue::S(status_filter))
+            .limit(limit);
+
+        if let Some(last_key) = query_params.first("lastKey") {
+            req = req.exclusive_start_key("invoice_id", AttributeValue::S(last_key.to_string()));
+        }
+
+        let resp = req.send().await.map_err(|e| Error::from(e.to_string()))?;
+        let last_key = resp.last_evaluated_key()
+            .and_then(|k| k.get("invoice_id"))
+            .and_then(|v| v.as_s().ok())
+            .map(|s| s.to_string());
+        (resp.items().to_vec(), last_key)
+    } else {
+        let mut req = dynamo.scan().table_name(Invoice::table_name()).limit(limit);
+
+        if let Some(last_key) = query_params.first("lastKey") {
+            req = req.exclusive_start_key("invoice_id", AttributeValue::S(last_key.to_string()));
+        }
+
+        let resp = req.send().await.map_err(|e| Error::from(e.to_string()))?;
+        let last_key = resp.last_evaluated_key()
+            .and_then(|k| k.get("invoice_id"))
+            .and_then(|v| v.as_s().ok())
+            .map(|s| s.to_string());
+        (resp.items().to_vec(), last_key)
+    };
+
+    eprintln!("   Found {} items", items.len());
+
+    let invoices: Vec<serde_json::Value> = items
         .iter()
-        .filter_map(|item| {
+        .map(|item| {
             let mut obj = serde_json::Map::new();
             for (k, v) in item {
                 if let Some(val) = attribute_to_json(v) {
                     obj.insert(k.clone(), val);
                 }
             }
-            Some(serde_json::Value::Object(obj))
+            serde_json::Value::Object(obj)
         })
         .collect();
-    
-    let last_key = response.last_evaluated_key()
-        .and_then(|k| k.get("invoice_id"))
-        .and_then(|v| v.as_s().ok())
-        .map(|s| s.to_string());
-    
+
     let result = serde_json::json!({
         "invoices": invoices,
-        "lastKey": last_key
+        "lastKey": last_evaluated_key
     });
-    
+
     Ok(Response::builder()
         .status(200)
         .header("content-type", "application/json")
@@ -154,16 +172,16 @@ async fn update_invoice(path: &str, event: Request, dynamo: &DynamoClient) -> Re
         .and_then(|v| v.as_s().ok())
         .ok_or_else(|| Error::from("Invoice not found"))?;
     
-    // Only allow pending <-> cancelled transitions
+    // Only allow pending -> cancelled; cancellation is a one-way transition
     let valid_transition = matches!(
         (current_status.as_str(), update_req.status.as_str()),
-        ("pending", "cancelled") | ("cancelled", "pending")
+        ("pending", "cancelled")
     );
     
     if !valid_transition {
         return Ok(Response::builder()
             .status(400)
-            .body(Body::from(r#"{"error":"Invalid status transition. Only pending <-> cancelled allowed"}"#))
+            .body(Body::from(r#"{"error":"Invalid status transition. Only pending -> cancelled is allowed"}"#))
             .unwrap());
     }
     

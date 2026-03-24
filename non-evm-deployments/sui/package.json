@@ -5,7 +5,8 @@
     "build": "tsc",
     "cdk": "cdk",
     "generate-wallets": "node scripts/generate-wallets.js",
-    "setup": "npm install && npm run generate-wallets && npm run deploy && npm run setup-secrets",
+    "build-lambdas": "./build.sh",
+    "setup": "./scripts/setup.sh",
     "deploy": "cdk deploy --require-approval never",
     "setup-secrets": "node scripts/setup-secrets.js",
     "test-payment": "./scripts/test-payment.sh"
@@ -14,9 +15,11 @@
     "@types/node": "^20.0.0",
     "aws-cdk": "^2.150.0",
     "cdk-nag": "^2.37.55",
+    "dotenv": "^16.0.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.1015.0",
     "@mysten/sui": "^2.9.1",
     "aws-cdk-lib": "^2.150.0",
     "bip39": "^3.1.0",

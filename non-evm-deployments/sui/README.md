@@ -77,94 +77,71 @@ The SUI implementation follows the same architecture as the EVM version but uses
 4. AWS CLI configured (`aws configure`)
 5. Rust toolchain (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`)
 6. Cargo Lambda (`cargo install cargo-lambda`)
+7. `jq` — used by `scripts/test-payment.sh` to parse API responses (`brew install jq` / `apt install jq`)
 
 ## Quick Start
 
 ```bash
 # Clone and navigate to project
-cd sui-payment-agent
+cd non-evm-deployments/sui
 
-# Install dependencies
-npm install
-
-# Generate wallets (creates mnemonic + treasury address)
-npm run generate-wallets
-
-# Build and deploy
-./build.sh
-npx cdk bootstrap   # first time only
-npm run deploy
-
-# Store mnemonic in AWS Secrets Manager (auto-reads from generate-wallets)
-npm run setup-secrets
+# Run the automated setup (recommended)
+npm run setup
 ```
+
+`npm run setup` runs `scripts/setup.sh`, which handles all steps end-to-end:
+checks prerequisites, installs dependencies, generates wallets, builds Rust Lambda
+functions, bootstraps CDK (skipped if already done), deploys the stack, and stores
+the mnemonic in Secrets Manager.
 
 **After deployment, proceed to [Usage](#usage) to start creating invoices.**
 
 ## Deployment
 
-### 1. Install Dependencies
+### Automated Setup (Recommended)
 
 ```bash
-npm install
+npm run setup
 ```
 
-### 2. Generate Wallets
+This is the complete, guided path. It checks for all required tools (`node`, `aws`,
+`cdk`, `cargo`, `cargo-lambda`) before proceeding, and each step is idempotent —
+re-running is safe.
 
-Generate a mnemonic and derive the treasury address:
-
-```bash
-npm run generate-wallets
-```
-
-This creates a `.env` file with your `TREASURY_ADDRESS` and a `.mnemonic` file (used by `setup-secrets`).
-
-To use an existing wallet instead, copy the sample configuration and edit manually:
+To use an existing wallet instead of generating a new one, copy the sample
+configuration and edit it before running setup:
 
 ```bash
 cp .env-sample .env
-```
-
-Update `.env` with your values:
-
-```bash
-# Required for production, optional for testing
-TREASURY_ADDRESS=0xYOUR_HARDWARE_WALLET_ADDRESS
-
-# Optional
-ALERT_EMAIL=your-email@example.com
-SUI_RPC_URL=https://fullnode.testnet.sui.io:443
+# Edit .env: set TREASURY_ADDRESS to your hardware wallet address
+npm run setup
 ```
 
 **Important:** For production, use a hardware wallet address for `TREASURY_ADDRESS`.
 
-### 3. Build Lambda Functions
+### Manual Steps (Reference)
+
+If you prefer to run each step individually:
 
 ```bash
-./build.sh
-```
+# 1. Install dependencies
+npm install
 
-This builds all Rust Lambda functions using cargo-lambda.
+# 2. Generate wallets (creates mnemonic + treasury address)
+npm run generate-wallets
 
-### 4. Bootstrap CDK (First Time Only)
+# 3. Build Rust Lambda functions
+npm run build-lambdas
 
-```bash
+# 4. Bootstrap CDK (first time only)
 npx cdk bootstrap
-```
 
-### 5. Deploy Stack
-
-```bash
+# 5. Deploy stack
 npm run deploy
-```
 
-### 6. Setup Secrets
-
-```bash
+# 6. Store mnemonic in AWS Secrets Manager
 npm run setup-secrets
 ```
-
-This stores your mnemonic in AWS Secrets Manager. If you ran `generate-wallets`, it auto-reads the `.mnemonic` file. Otherwise, you'll be prompted to enter a 12-word mnemonic.
 
 ## Usage
 
@@ -435,19 +412,21 @@ To remove all deployed resources:
 cdk destroy
 ```
 
-**Warning:** This will delete:
-- All Lambda functions
-- DynamoDB tables (including invoice history)
-- API Gateway
-- CloudWatch logs
+This will delete Lambda functions, DynamoDB tables, API Gateway, SNS topics,
+the mnemonic secret, and CloudWatch logs.
 
-The mnemonic in Secrets Manager must be deleted manually:
+**After `cdk destroy`, delete the KMS key manually.** The key is configured with
+`removalPolicy: DESTROY` so CDK will attempt deletion, but AWS KMS enforces a
+7–30 day waiting period before a key is permanently removed. You can schedule
+immediate deletion (minimum 7 days) via:
 
 ```bash
-aws secretsmanager delete-secret \
-  --secret-id sui-payment-mnemonic \
-  --force-delete-without-recovery
+aws kms schedule-key-deletion \
+  --key-id <KmsKeyId from stack outputs> \
+  --pending-window-in-days 7
 ```
+
+Until deletion completes, the key continues to incur charges (~$1/month per CMK).
 
 ## Security Notes
 
