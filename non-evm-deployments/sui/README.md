@@ -203,9 +203,8 @@ curl -X POST "${API_URL}create-invoice" \
   }'
 ```
 
-> **Amounts are always human-readable.** Use `0.1` for 0.1 SUI, `0.01` for
-> 0.01 USDC. The system converts to native units (MIST / token decimals)
-> internally.
+> **Amounts are always human-readable.** Use `0.1` for 0.1 SUI, `0.01` for 0.01
+> USDC. The system converts to native units (MIST / token decimals) internally.
 
 Response:
 
@@ -265,10 +264,9 @@ curl -X DELETE "${API_URL}invoices/{invoiceId}" \
 
 ## Token Payments: Fund the KMS Hot Wallet
 
-Token payment sweeps (e.g. USDC) are **sponsored transactions** — the KMS
-hot wallet pays the gas fee so the invoice address never needs native SUI.
-Before processing any token invoices you must fund the KMS wallet with
-testnet SUI.
+Token payment sweeps (e.g. USDC) are **sponsored transactions** — the KMS hot
+wallet pays the gas fee so the invoice address never needs native SUI. Before
+processing any token invoices you must fund the KMS wallet with testnet SUI.
 
 ```bash
 # Print the KMS hot wallet SUI address
@@ -280,8 +278,8 @@ Then send testnet SUI to that address via the faucet:
 - Web: https://faucet.testnet.sui.io
 - CLI: `sui client faucet --address <kms-address>`
 
-> Native SUI invoices do **not** require this step — the invoice wallet pays
-> its own gas directly from the received funds.
+> Native SUI invoices do **not** require this step — the invoice wallet pays its
+> own gas directly from the received funds.
 
 ## Testing Payments
 
@@ -349,8 +347,8 @@ Create a new payment invoice with a unique SUI address.
 **Parameters:**
 
 - `amount` (number, required): Payment amount in human-readable units (e.g.
-  `0.1` for 0.1 SUI, `0.01` for 0.01 USDC). The system converts to native
-  units internally.
+  `0.1` for 0.1 SUI, `0.01` for 0.01 USDC). The system converts to native units
+  internally.
 - `reference_id` (string, required): Your internal reference ID
 - `expiry_seconds` (number, required): Invoice expiration time in seconds
 - `token_type` (string, optional): Set to "token" for token payments (default:

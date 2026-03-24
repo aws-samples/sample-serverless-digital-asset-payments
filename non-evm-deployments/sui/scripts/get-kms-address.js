@@ -24,11 +24,14 @@ async function main() {
   let kmsKeyId = process.env.KMS_KEY_ID;
   if (!kmsKeyId) {
     try {
-      const { CloudFormationClient, DescribeStacksCommand } = require('@aws-sdk/client-cloudformation');
+      const {
+        CloudFormationClient,
+        DescribeStacksCommand,
+      } = require('@aws-sdk/client-cloudformation');
       const cfn = new CloudFormationClient({ region });
       const resp = await cfn.send(new DescribeStacksCommand({ StackName: 'SuiPaymentStack' }));
       const outputs = resp.Stacks[0].Outputs || [];
-      kmsKeyId = outputs.find((o) => o.OutputKey === 'KmsKeyId')?.OutputValue;
+      kmsKeyId = outputs.find(o => o.OutputKey === 'KmsKeyId')?.OutputValue;
     } catch (e) {
       console.error('Could not read KmsKeyId from CloudFormation:', e.message);
       console.error('Set KMS_KEY_ID env var and retry.');
@@ -60,7 +63,7 @@ async function main() {
   console.log('Faucet: https://faucet.testnet.sui.io');
 }
 
-main().catch((e) => {
+main().catch(e => {
   console.error(e.message);
   process.exit(1);
 });
