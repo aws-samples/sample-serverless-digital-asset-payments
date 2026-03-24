@@ -10,11 +10,11 @@ use serde::Deserialize;
 use shared::{get_mnemonic, derive_keypair, Invoice};
 use sui_sdk::{SuiClientBuilder, types::base_types::SuiAddress, rpc_types::SuiTransactionBlockResponseOptions};
 use sui_types::crypto::{Signer, Signature, PublicKey, ToFromBytes};
+use fastcrypto::serde_helpers::BytesRepresentation;
 use sui_types::signature::GenericSignature;
 use shared_crypto::intent::{Intent, IntentMessage};
 use std::str::FromStr;
 use fastcrypto::hash::HashFunction;
-use fastcrypto::ed25519::Ed25519PublicKey;
 
 const MAX_RETRIES: u32 = 3;
 
@@ -38,9 +38,8 @@ async fn kms_sui_address(kms: &KmsClient, key_id: &str) -> Result<(SuiAddress, [
     let mut raw = [0u8; 32];
     raw.copy_from_slice(&der[der.len() - 32..]);
 
-    let fc_pk = Ed25519PublicKey::from_bytes(&raw)
-        .map_err(|e| Error::from(format!("Failed to parse KMS Ed25519 public key: {:?}", e)))?;
-    let address = SuiAddress::from(&PublicKey::Ed25519(fc_pk));
+    let pk_as_bytes = BytesRepresentation(raw);
+    let address = SuiAddress::from(&PublicKey::Ed25519(pk_as_bytes));
     Ok((address, raw))
 }
 
@@ -56,7 +55,7 @@ async fn kms_sign(
         .key_id(key_id)
         .message(aws_sdk_kms::primitives::Blob::new(digest.to_vec()))
         .message_type(MessageType::Raw)
-        .signing_algorithm(SigningAlgorithmSpec::Eddsa)
+        .signing_algorithm(SigningAlgorithmSpec::Ed25519Sha512)
         .send()
         .await
         .map_err(|e| Error::from(format!("KMS Sign failed: {}", e)))?;

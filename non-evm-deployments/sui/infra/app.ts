@@ -43,4 +43,9 @@ NagSuppressions.addStackSuppressions(stack, [
     reason:
       'WAF not included in reference implementation. Recommended for production deployments handling high-value transactions.',
   },
+  {
+    id: 'AwsSolutions-SMG4',
+    reason:
+      'Automatic rotation is intentionally disabled for the mnemonic secret. Rotating it would invalidate all derived invoice wallet addresses.',
+  },
 ]);
