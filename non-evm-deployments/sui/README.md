@@ -73,7 +73,6 @@ SUI-specific libraries and transaction structures:
    blocks
 3. **Gas Model**: MIST for gas (1 SUI = 1,000,000,000 MIST)
 4. **Account Model**: SUI's object-based model vs Ethereum's account model
-5. **Treasury Security**: Supports external hardware wallets (Ledger, Trezor)
 
 ## Prerequisites
 
