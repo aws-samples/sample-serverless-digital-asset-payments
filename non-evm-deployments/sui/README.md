@@ -1,6 +1,9 @@
 # Processing SUI Digital Asset Payments on AWS
 
-This is a SUI-specific implementation of the serverless digital asset payment system, based on the [AWS EVM-compatible blueprint](https://aws.amazon.com/blogs/web3/processing-digital-asset-payments-on-aws/). Configured for SUI testnet by default.
+This is a SUI-specific implementation of the serverless digital asset payment
+system, based on the
+[AWS EVM-compatible blueprint](https://aws.amazon.com/blogs/web3/processing-digital-asset-payments-on-aws/).
+Configured for SUI testnet by default.
 
 ## Table of Contents
 
@@ -19,7 +22,8 @@ This is a SUI-specific implementation of the serverless digital asset payment sy
 
 ## Architecture
 
-The SUI implementation follows the same architecture as the EVM version but uses SUI-specific libraries and transaction structures:
+The SUI implementation follows the same architecture as the EVM version but uses
+SUI-specific libraries and transaction structures:
 
 - **Native SUI payments** instead of ETH
 - **Token payments** (USDC, USDT, custom SUI tokens) with whitelist validation
@@ -63,8 +67,10 @@ The SUI implementation follows the same architecture as the EVM version but uses
 
 ## Key Differences from EVM Implementation
 
-1. **Wallet Derivation**: Uses BIP44 path `m/44'/784'/0'/0'/x'` for SUI (SLIP-0010)
-2. **Transaction Structure**: SUI transactions with programmable transaction blocks
+1. **Wallet Derivation**: Uses BIP44 path `m/44'/784'/0'/0'/x'` for SUI
+   (SLIP-0010)
+2. **Transaction Structure**: SUI transactions with programmable transaction
+   blocks
 3. **Gas Model**: MIST for gas (1 SUI = 1,000,000,000 MIST)
 4. **Account Model**: SUI's object-based model vs Ethereum's account model
 5. **Treasury Security**: Supports external hardware wallets (Ledger, Trezor)
@@ -75,9 +81,11 @@ The SUI implementation follows the same architecture as the EVM version but uses
 2. Node.js 18.x or later
 3. AWS CDK CLI installed (`npm install -g aws-cdk`)
 4. AWS CLI configured (`aws configure`)
-5. Rust toolchain (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`)
+5. Rust toolchain
+   (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`)
 6. Cargo Lambda (`cargo install cargo-lambda`)
-7. `jq` — used by `scripts/test-payment.sh` to parse API responses (`brew install jq` / `apt install jq`)
+7. `jq` — used by `scripts/test-payment.sh` to parse API responses
+   (`brew install jq` / `apt install jq`)
 
 ## Quick Start
 
@@ -90,9 +98,9 @@ npm run setup
 ```
 
 `npm run setup` runs `scripts/setup.sh`, which handles all steps end-to-end:
-checks prerequisites, installs dependencies, generates wallets, builds Rust Lambda
-functions, bootstraps CDK (skipped if already done), deploys the stack, and stores
-the mnemonic in Secrets Manager.
+checks prerequisites, installs dependencies, generates wallets, builds Rust
+Lambda functions, bootstraps CDK (skipped if already done), deploys the stack,
+and stores the mnemonic in Secrets Manager.
 
 **After deployment, proceed to [Usage](#usage) to start creating invoices.**
 
@@ -104,9 +112,9 @@ the mnemonic in Secrets Manager.
 npm run setup
 ```
 
-This is the complete, guided path. It checks for all required tools (`node`, `aws`,
-`cdk`, `cargo`, `cargo-lambda`) before proceeding, and each step is idempotent —
-re-running is safe.
+This is the complete, guided path. It checks for all required tools (`node`,
+`aws`, `cdk`, `cargo`, `cargo-lambda`) before proceeding, and each step is
+idempotent — re-running is safe.
 
 To use an existing wallet instead of generating a new one, copy the sample
 configuration and edit it before running setup:
@@ -117,7 +125,8 @@ cp .env-sample .env
 npm run setup
 ```
 
-**Important:** For production, use a hardware wallet address for `TREASURY_ADDRESS`.
+**Important:** For production, use a hardware wallet address for
+`TREASURY_ADDRESS`.
 
 ### Manual Steps (Reference)
 
@@ -238,7 +247,8 @@ curl -X PUT "${API_URL}invoices/{invoiceId}" \
   -d '{"status": "cancelled"}'
 ```
 
-**Note:** Only `pending` invoices can be cancelled. `paid` and `swept` statuses are immutable.
+**Note:** Only `pending` invoices can be cancelled. `paid` and `swept` statuses
+are immutable.
 
 ### Delete Invoice
 
@@ -267,7 +277,8 @@ npm run test-payment
 
 1. **Create invoice** using the API
 2. **Fund the address** via SUI testnet faucet:
-   - Discord: https://discord.com/channels/916379725201563759/971488439931392130 (use `!faucet <address>`)
+   - Discord: https://discord.com/channels/916379725201563759/971488439931392130
+     (use `!faucet <address>`)
    - Web: https://faucet.testnet.sui.io
 3. **Wait for detection** (watcher runs every minute)
 4. **Verify sweep** to treasury address
@@ -289,6 +300,7 @@ curl -X GET "${API_URL}invoices/{invoiceId}" \
 Create a new payment invoice with a unique SUI address.
 
 **Request Body (Native SUI):**
+
 ```json
 {
   "amount": 100000000,
@@ -298,6 +310,7 @@ Create a new payment invoice with a unique SUI address.
 ```
 
 **Request Body (Token Payment):**
+
 ```json
 {
   "amount": 1000000,
@@ -311,21 +324,30 @@ Create a new payment invoice with a unique SUI address.
 ```
 
 **Parameters:**
-- `amount` (number, required): Payment amount in smallest unit (MIST for SUI, token decimals for tokens)
+
+- `amount` (number, required): Payment amount in smallest unit (MIST for SUI,
+  token decimals for tokens)
 - `reference_id` (string, required): Your internal reference ID
 - `expiry_seconds` (number, required): Invoice expiration time in seconds
-- `token_type` (string, optional): Set to "token" for token payments (default: native SUI)
-- `token_address` (string, required if token_type="token"): Full token address (e.g., "0x...::coin::COIN")
-- `token_symbol` (string, required if token_type="token"): Token symbol (e.g., "USDC")
-- `token_decimals` (number, required if token_type="token"): Token decimal places (e.g., 6 for USDC)
+- `token_type` (string, optional): Set to "token" for token payments (default:
+  native SUI)
+- `token_address` (string, required if token_type="token"): Full token address
+  (e.g., "0x...::coin::COIN")
+- `token_symbol` (string, required if token_type="token"): Token symbol (e.g.,
+  "USDC")
+- `token_decimals` (number, required if token_type="token"): Token decimal
+  places (e.g., 6 for USDC)
 
-**Token Whitelist:**
-Only whitelisted tokens are accepted. Current whitelist:
-- USDC: `0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN`
+**Token Whitelist:** Only whitelisted tokens are accepted. Current whitelist:
 
-To add tokens, update the whitelist in `invoice-generator/src/main.rs` and redeploy.
+- USDC:
+  `0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN`
+
+To add tokens, update the whitelist in `invoice-generator/src/main.rs` and
+redeploy.
 
 **Response:**
+
 ```json
 {
   "invoice_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -341,11 +363,14 @@ To add tokens, update the whitelist in `invoice-generator/src/main.rs` and redep
 List all invoices with optional filtering and pagination.
 
 **Query Parameters:**
-- `status` (string, optional): Filter by status (`pending`, `paid`, `swept`, `cancelled`)
+
+- `status` (string, optional): Filter by status (`pending`, `paid`, `swept`,
+  `cancelled`)
 - `limit` (number, optional): Maximum results to return (default: 50)
 - `lastKey` (string, optional): Pagination token from previous response
 
 **Response:**
+
 ```json
 {
   "invoices": [...],
@@ -358,6 +383,7 @@ List all invoices with optional filtering and pagination.
 Get details for a specific invoice.
 
 **Response:**
+
 ```json
 {
   "invoice_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -374,6 +400,7 @@ Get details for a specific invoice.
 Update an invoice (currently only supports cancellation).
 
 **Request Body:**
+
 ```json
 {
   "status": "cancelled"
@@ -381,6 +408,7 @@ Update an invoice (currently only supports cancellation).
 ```
 
 **Security Rules:**
+
 - Only `pending` → `cancelled` transitions allowed
 - `paid` and `swept` statuses are immutable
 
@@ -389,6 +417,7 @@ Update an invoice (currently only supports cancellation).
 Delete an invoice (only `pending` or `cancelled` invoices).
 
 **Response:**
+
 ```json
 {
   "message": "Invoice deleted successfully"
@@ -397,11 +426,13 @@ Delete an invoice (only `pending` or `cancelled` invoices).
 
 ## Payment Flow
 
-1. **Invoice Creation**: System generates unique SUI address via HD wallet derivation
+1. **Invoice Creation**: System generates unique SUI address via HD wallet
+   derivation
 2. **Customer Payment**: Customer sends SUI to the generated address
 3. **Payment Monitoring**: Watcher Lambda checks for payments every minute
 4. **Payment Detection**: Invoice marked as "paid" when funds received
-5. **Fund Sweeping**: Sweeper Lambda automatically transfers funds to treasury wallet
+5. **Fund Sweeping**: Sweeper Lambda automatically transfers funds to treasury
+   wallet
 6. **Status Update**: Invoice marked as "swept"
 
 ## Clean Up
@@ -412,8 +443,8 @@ To remove all deployed resources:
 cdk destroy
 ```
 
-This will delete Lambda functions, DynamoDB tables, API Gateway, SNS topics,
-the mnemonic secret, and CloudWatch logs.
+This will delete Lambda functions, DynamoDB tables, API Gateway, SNS topics, the
+mnemonic secret, and CloudWatch logs.
 
 **After `cdk destroy`, delete the KMS key manually.** The key is configured with
 `removalPolicy: DESTROY` so CDK will attempt deletion, but AWS KMS enforces a
@@ -426,7 +457,8 @@ aws kms schedule-key-deletion \
   --pending-window-in-days 7
 ```
 
-Until deletion completes, the key continues to incur charges (~$1/month per CMK).
+Until deletion completes, the key continues to incur charges (~$1/month per
+CMK).
 
 ## Security Notes
 
@@ -436,11 +468,13 @@ Until deletion completes, the key continues to incur charges (~$1/month per CMK)
 - **Secrets Access**: Restricted to specific Lambda function IAM roles only
 - **API Gateway**: Secured with API keys (rotate regularly)
 - **Treasury Wallet**: Should be an offline hardware wallet (Ledger, Trezor)
-- **Invoice Addresses**: Hot wallets with automated sweeping (funds never stay long)
+- **Invoice Addresses**: Hot wallets with automated sweeping (funds never stay
+  long)
 
 ### Best Practices
 
-1. **Use Hardware Wallet for Treasury**: Never store treasury private keys in the cloud
+1. **Use Hardware Wallet for Treasury**: Never store treasury private keys in
+   the cloud
 2. **Rotate API Keys**: Regularly rotate API Gateway keys
 3. **Monitor CloudWatch**: Set up alerts for failed sweeps or errors
 4. **Backup Mnemonic**: Keep secure offline backup of invoice mnemonic
@@ -453,6 +487,7 @@ Until deletion completes, the key continues to incur charges (~$1/month per CMK)
 **Symptom**: API returns 500 error when creating invoice
 
 **Solution**: Verify mnemonic is stored in Secrets Manager:
+
 ```bash
 aws secretsmanager get-secret-value --secret-id sui-payment-mnemonic
 ```
@@ -464,6 +499,7 @@ If missing, run: `npm run setup-secrets`
 **Symptom**: Invoice stays in "pending" status after payment
 
 **Solutions**:
+
 1. Verify payment on SUI explorer: https://suiscan.xyz/testnet
 2. Check RPC URL is correct in environment variables
 3. Wait 1-2 minutes for watcher cycle to complete
@@ -474,6 +510,7 @@ If missing, run: `npm run setup-secrets`
 **Symptom**: Invoice marked "paid" but funds not swept
 
 **Solutions**:
+
 1. Check sweeper Lambda logs in CloudWatch
 2. Verify treasury address is valid SUI address
 3. Check if invoice address has sufficient balance for gas
@@ -484,6 +521,7 @@ If missing, run: `npm run setup-secrets`
 **Symptom**: No payment detection happening
 
 **Solutions**:
+
 1. Verify EventBridge rule is enabled
 2. Check watcher Lambda logs for errors
 3. Manually invoke watcher Lambda to test

@@ -228,43 +228,59 @@ export class SuiPaymentStack extends cdk.Stack {
 
     // Invoice management endpoints
     const invoicesResource = api.root.addResource('invoices');
-    invoicesResource.addMethod('GET', new apigateway.LambdaIntegration(invoiceManager, {
-      proxy: true,
-    }), {
-      apiKeyRequired: true,
-    });
+    invoicesResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(invoiceManager, {
+        proxy: true,
+      }),
+      {
+        apiKeyRequired: true,
+      }
+    );
 
     const invoiceIdResource = invoicesResource.addResource('{invoiceId}');
-    invoiceIdResource.addMethod('GET', new apigateway.LambdaIntegration(invoiceManager, {
-      proxy: true,
-    }), {
-      apiKeyRequired: true,
-      requestValidator: requestValidator,
-      requestParameters: {
-        'method.request.path.invoiceId': true,
-      },
-    });
-    invoiceIdResource.addMethod('PUT', new apigateway.LambdaIntegration(invoiceManager, {
-      proxy: true,
-    }), {
-      apiKeyRequired: true,
-      requestValidator: requestValidator,
-      requestModels: {
-        'application/json': updateInvoiceModel,
-      },
-      requestParameters: {
-        'method.request.path.invoiceId': true,
-      },
-    });
-    invoiceIdResource.addMethod('DELETE', new apigateway.LambdaIntegration(invoiceManager, {
-      proxy: true,
-    }), {
-      apiKeyRequired: true,
-      requestValidator: requestValidator,
-      requestParameters: {
-        'method.request.path.invoiceId': true,
-      },
-    });
+    invoiceIdResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(invoiceManager, {
+        proxy: true,
+      }),
+      {
+        apiKeyRequired: true,
+        requestValidator: requestValidator,
+        requestParameters: {
+          'method.request.path.invoiceId': true,
+        },
+      }
+    );
+    invoiceIdResource.addMethod(
+      'PUT',
+      new apigateway.LambdaIntegration(invoiceManager, {
+        proxy: true,
+      }),
+      {
+        apiKeyRequired: true,
+        requestValidator: requestValidator,
+        requestModels: {
+          'application/json': updateInvoiceModel,
+        },
+        requestParameters: {
+          'method.request.path.invoiceId': true,
+        },
+      }
+    );
+    invoiceIdResource.addMethod(
+      'DELETE',
+      new apigateway.LambdaIntegration(invoiceManager, {
+        proxy: true,
+      }),
+      {
+        apiKeyRequired: true,
+        requestValidator: requestValidator,
+        requestParameters: {
+          'method.request.path.invoiceId': true,
+        },
+      }
+    );
 
     const apiKey = api.addApiKey('ApiKey');
     const plan = api.addUsagePlan('UsagePlan', {
@@ -305,7 +321,7 @@ export class SuiPaymentStack extends cdk.Stack {
     if (!treasuryAddress) {
       throw new Error('TREASURY_ADDRESS environment variable is required. Set it in .env file.');
     }
-    
+
     const sweeper = new lambda.Function(this, 'Sweeper', {
       runtime: lambda.Runtime.PROVIDED_AL2023,
       architecture: lambda.Architecture.ARM_64,
@@ -326,14 +342,18 @@ export class SuiPaymentStack extends cdk.Stack {
     invoiceTable.grantReadWriteData(sweeper);
     mnemonicSecret.grantRead(sweeper);
     alertTopic.grantPublish(sweeper);
-    sweeper.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['kms:Sign', 'kms:GetPublicKey'],
-      resources: [signingKeyCfn.attrArn],
-    }));
-    sweeper.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['cloudwatch:PutMetricData'],
-      resources: ['*'],
-    }));
+    sweeper.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['kms:Sign', 'kms:GetPublicKey'],
+        resources: [signingKeyCfn.attrArn],
+      })
+    );
+    sweeper.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudwatch:PutMetricData'],
+        resources: ['*'],
+      })
+    );
 
     // Single DENY policy applied after both Lambdas exist so both ARNs
     // are in the exception list. A DENY always overrides an ALLOW in IAM,
@@ -356,23 +376,25 @@ export class SuiPaymentStack extends cdk.Stack {
       })
     );
 
-    sweeper.addEventSource(new DynamoEventSource(invoiceTable, {
-      startingPosition: lambda.StartingPosition.LATEST,
-      batchSize: 1,
-      retryAttempts: 3,
-      parallelizationFactor: 1,
-      reportBatchItemFailures: true,
-      filters: [
-        lambda.FilterCriteria.filter({
-          eventName: lambda.FilterRule.isEqual('MODIFY'),
-          dynamodb: {
-            NewImage: {
-              status: { S: lambda.FilterRule.isEqual('paid') },
+    sweeper.addEventSource(
+      new DynamoEventSource(invoiceTable, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 1,
+        retryAttempts: 3,
+        parallelizationFactor: 1,
+        reportBatchItemFailures: true,
+        filters: [
+          lambda.FilterCriteria.filter({
+            eventName: lambda.FilterRule.isEqual('MODIFY'),
+            dynamodb: {
+              NewImage: {
+                status: { S: lambda.FilterRule.isEqual('paid') },
+              },
             },
-          },
-        }),
-      ],
-    }));
+          }),
+        ],
+      })
+    );
 
     // Outputs
     new cdk.CfnOutput(this, 'ApiEndpoint', {
@@ -406,7 +428,7 @@ export class SuiPaymentStack extends cdk.Stack {
     });
 
     // CloudWatch Alarms
-    
+
     // Alarm: Sweeper errors
     const sweeperErrorAlarm = new cloudwatch.Alarm(this, 'SweeperErrorAlarm', {
       metric: sweeper.metricErrors({
@@ -484,7 +506,7 @@ export class SuiPaymentStack extends cdk.Stack {
           sweeper.metricErrors({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
         ],
         width: 12,
-      }),
+      })
     );
 
     // Row 2: Lambda Duration
@@ -492,7 +514,10 @@ export class SuiPaymentStack extends cdk.Stack {
       new cloudwatch.GraphWidget({
         title: 'Lambda Duration (ms)',
         left: [
-          invoiceGenerator.metricDuration({ statistic: 'Average', period: cdk.Duration.minutes(5) }),
+          invoiceGenerator.metricDuration({
+            statistic: 'Average',
+            period: cdk.Duration.minutes(5),
+          }),
           watcher.metricDuration({ statistic: 'Average', period: cdk.Duration.minutes(5) }),
           sweeper.metricDuration({ statistic: 'Average', period: cdk.Duration.minutes(5) }),
         ],
@@ -504,14 +529,17 @@ export class SuiPaymentStack extends cdk.Stack {
           new cloudwatch.MathExpression({
             expression: '(invocations - errors) / invocations * 100',
             usingMetrics: {
-              invocations: sweeper.metricInvocations({ statistic: 'Sum', period: cdk.Duration.hours(1) }),
+              invocations: sweeper.metricInvocations({
+                statistic: 'Sum',
+                period: cdk.Duration.hours(1),
+              }),
               errors: sweeper.metricErrors({ statistic: 'Sum', period: cdk.Duration.hours(1) }),
             },
             label: 'Success Rate %',
           }),
         ],
         width: 12,
-      }),
+      })
     );
 
     // Row 3: DynamoDB Metrics
@@ -519,8 +547,14 @@ export class SuiPaymentStack extends cdk.Stack {
       new cloudwatch.GraphWidget({
         title: 'DynamoDB Read/Write Capacity',
         left: [
-          invoiceTable.metricConsumedReadCapacityUnits({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
-          invoiceTable.metricConsumedWriteCapacityUnits({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
+          invoiceTable.metricConsumedReadCapacityUnits({
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(5),
+          }),
+          invoiceTable.metricConsumedWriteCapacityUnits({
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(5),
+          }),
         ],
         width: 12,
       }),
@@ -528,10 +562,13 @@ export class SuiPaymentStack extends cdk.Stack {
         title: 'DynamoDB Throttles',
         left: [
           invoiceTable.metricUserErrors({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
-          invoiceTable.metricSystemErrorsForOperations({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
+          invoiceTable.metricSystemErrorsForOperations({
+            statistic: 'Sum',
+            period: cdk.Duration.minutes(5),
+          }),
         ],
         width: 12,
-      }),
+      })
     );
 
     // Row 4: Custom Metrics (Log-based)
@@ -568,7 +605,7 @@ export class SuiPaymentStack extends cdk.Stack {
         title: 'Invoice Lifecycle',
         left: [invoiceCreatedMetric, paymentDetectedMetric, sweepSuccessMetric, sweepFailedMetric],
         width: 24,
-      }),
+      })
     );
 
     // Alarm: Failed sweeps

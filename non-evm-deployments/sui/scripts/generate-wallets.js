@@ -38,7 +38,8 @@ function main() {
   if (fs.existsSync(ENV_SAMPLE_PATH)) {
     envContent = fs.readFileSync(ENV_SAMPLE_PATH, 'utf8');
   } else {
-    envContent = 'TREASURY_ADDRESS=\nALERT_EMAIL=\nSUI_RPC_URL=https://fullnode.testnet.sui.io:443\nSUI_NETWORK=testnet\n';
+    envContent =
+      'TREASURY_ADDRESS=\nALERT_EMAIL=\nSUI_RPC_URL=https://fullnode.testnet.sui.io:443\nSUI_NETWORK=testnet\n';
   }
   envContent = envContent.replace(/^TREASURY_ADDRESS=.*$/m, `TREASURY_ADDRESS=${treasuryAddress}`);
   fs.writeFileSync(ENV_PATH, envContent);
@@ -49,7 +50,9 @@ function main() {
   fs.writeFileSync(mnemonicPath, mnemonic, { mode: 0o600 });
   console.log('✅ Saved mnemonic to .mnemonic (used by setup-secrets)\n');
 
-  console.log('⚠️  IMPORTANT: Back up your mnemonic securely and delete .mnemonic after deployment.\n');
+  console.log(
+    '⚠️  IMPORTANT: Back up your mnemonic securely and delete .mnemonic after deployment.\n'
+  );
   console.log('Next steps:');
   console.log('  1. Fund treasury on testnet: https://faucet.sui.io/?network=testnet');
   console.log(`     Address: ${treasuryAddress}`);

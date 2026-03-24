@@ -17,10 +17,12 @@ async function storeMnemonic(mnemonic) {
   const client = new SecretsManagerClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
   console.log('\n📝 Storing mnemonic in AWS Secrets Manager...');
-  await client.send(new PutSecretValueCommand({
-    SecretId: 'sui-payment-mnemonic',
-    SecretString: mnemonic,
-  }));
+  await client.send(
+    new PutSecretValueCommand({
+      SecretId: 'sui-payment-mnemonic',
+      SecretString: mnemonic,
+    })
+  );
 
   console.log('✅ Mnemonic stored successfully!');
   console.log('   Secret name: sui-payment-mnemonic');
@@ -48,7 +50,7 @@ async function main() {
 
   // Fall back to interactive prompt
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  rl.question('Enter your 12-word mnemonic: ', async (input) => {
+  rl.question('Enter your 12-word mnemonic: ', async input => {
     const mnemonic = input.trim();
     const words = mnemonic.split(' ');
     if (words.length !== 12 && words.length !== 24) {
@@ -61,9 +63,11 @@ async function main() {
   });
 }
 
-main().catch((err) => {
+main().catch(err => {
   if (err.name === 'ResourceNotFoundException') {
-    console.error('\n❌ Secret "sui-payment-mnemonic" not found. Deploy the stack first: npm run deploy\n');
+    console.error(
+      '\n❌ Secret "sui-payment-mnemonic" not found. Deploy the stack first: npm run deploy\n'
+    );
   } else {
     console.error('\n❌ Error:', err.message);
   }

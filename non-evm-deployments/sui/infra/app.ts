@@ -20,22 +20,27 @@ Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 NagSuppressions.addStackSuppressions(stack, [
   {
     id: 'AwsSolutions-IAM4',
-    reason: 'AWS managed policies (AWSLambdaBasicExecutionRole) are acceptable for Lambda execution roles in reference implementations',
+    reason:
+      'AWS managed policies (AWSLambdaBasicExecutionRole) are acceptable for Lambda execution roles in reference implementations',
   },
   {
     id: 'AwsSolutions-IAM5',
-    reason: 'Wildcard permissions required for DynamoDB GSI access and CloudWatch metrics. Scoped to specific resources where possible.',
+    reason:
+      'Wildcard permissions required for DynamoDB GSI access and CloudWatch metrics. Scoped to specific resources where possible.',
   },
   {
     id: 'AwsSolutions-APIG4',
-    reason: 'API key authentication is appropriate for payment APIs. Cognito would add unnecessary complexity for this use case.',
+    reason:
+      'API key authentication is appropriate for payment APIs. Cognito would add unnecessary complexity for this use case.',
   },
   {
     id: 'AwsSolutions-COG4',
-    reason: 'API key authentication is appropriate for payment APIs. Cognito user pools not required for server-to-server communication.',
+    reason:
+      'API key authentication is appropriate for payment APIs. Cognito user pools not required for server-to-server communication.',
   },
   {
     id: 'AwsSolutions-APIG3',
-    reason: 'WAF not included in reference implementation. Recommended for production deployments handling high-value transactions.',
+    reason:
+      'WAF not included in reference implementation. Recommended for production deployments handling high-value transactions.',
   },
 ]);
