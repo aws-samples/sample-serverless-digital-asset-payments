@@ -5,7 +5,7 @@
 
 set -e
 
-AMOUNT=${1:-100000000}  # Default 0.1 SUI (100M MIST)
+AMOUNT=${1:-0.1}  # Default 0.1 SUI (human-readable)
 
 echo "=== SUI Payment Agent - End-to-End Test ==="
 echo ""
@@ -19,7 +19,7 @@ API_KEY_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
 API_KEY=$(aws apigateway get-api-key --api-key "$API_KEY_ID" --include-value \
   --query 'value' --output text 2>/dev/null)
 
-echo "📝 Creating invoice for $AMOUNT MIST..."
+echo "📝 Creating invoice for $AMOUNT SUI..."
 RESPONSE=$(curl -s -X POST "${API_URL}create-invoice" \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
@@ -36,49 +36,47 @@ fi
 
 echo "✅ Invoice created!"
 echo "   Invoice ID: $INVOICE_ID"
-echo "   Address: $ADDRESS"
-echo "   Amount: $AMOUNT MIST"
+echo "   Address:    $ADDRESS"
+echo "   Amount:     $AMOUNT SUI"
 echo ""
 
-echo "💰 Please fund this address with SUI testnet tokens:"
-echo "   1. Visit: https://discord.com/channels/916379725201563759/971488439931392130"
-echo "   2. Use command: !faucet $ADDRESS"
-echo "   3. Wait for confirmation"
+echo "💰 Fund this address with testnet SUI:"
+echo "   Web faucet: https://faucet.testnet.sui.io"
+echo "   Address:    $ADDRESS"
 echo ""
 
 read -p "Press Enter after funding the address..."
 
 echo ""
 echo "🔍 Waiting for payment detection (watcher runs every minute)..."
-echo "   Checking status every 30 seconds..."
 
-for i in 1 2 3 4; do
-  sleep 30
+for i in $(seq 1 8); do
+  sleep 15
   STATUS=$(aws dynamodb get-item --table-name SuiInvoices \
     --key "{\"invoice_id\": {\"S\": \"$INVOICE_ID\"}}" \
     --query 'Item.status.S' --output text)
-  echo "   Status: $STATUS"
-  if [ "$STATUS" == "paid" ] || [ "$STATUS" == "swept" ]; then
+  echo "   $(date '+%H:%M:%S') status: $STATUS"
+  if [ "$STATUS" == "swept" ]; then
     break
   fi
 done
 
-# Check final status
 STATUS=$(aws dynamodb get-item --table-name SuiInvoices \
   --key "{\"invoice_id\": {\"S\": \"$INVOICE_ID\"}}" \
   --query 'Item.status.S' --output text)
 
 if [ "$STATUS" == "swept" ]; then
-  echo "✅ Test successful! Invoice swept to treasury."
-  
   TX_DIGEST=$(aws dynamodb get-item --table-name SuiInvoices \
     --key "{\"invoice_id\": {\"S\": \"$INVOICE_ID\"}}" \
     --query 'Item.tx_digest.S' --output text)
-  
+  echo ""
+  echo "✅ Test successful! Invoice swept to treasury."
   echo "   Transaction: https://suiscan.xyz/testnet/tx/$TX_DIGEST"
 else
-  echo "⚠️  Invoice status: $STATUS"
+  echo ""
+  echo "⚠️  Invoice status: $STATUS (expected: swept)"
   echo "   Check CloudWatch logs for errors"
+  exit 1
 fi
 
 echo ""

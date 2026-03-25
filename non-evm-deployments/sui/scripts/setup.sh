@@ -102,6 +102,33 @@ setup_secrets() {
     echo "✅ Secrets configured"
 }
 
+subscribe_sns_notifications() {
+    print_header "SNS Email Notifications (Optional)"
+
+    read -p "Subscribe to payment notifications via email? (y/N): " -n 1 -r
+    echo
+    [[ ! $REPLY =~ ^[Yy]$ ]] && return
+
+    read -p "Enter email address: " email
+
+    if [[ -z "$email" ]]; then
+        echo "⚠️  No email provided, skipping"
+        return
+    fi
+
+    local sns_topic_arn
+    sns_topic_arn=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+        --query "Stacks[0].Outputs[?OutputKey=='SnsTopicArn'].OutputValue" --output text)
+
+    aws sns subscribe \
+        --topic-arn "$sns_topic_arn" \
+        --protocol email \
+        --notification-endpoint "$email" >/dev/null
+
+    echo "✅ Subscription request sent to $email"
+    echo "⚠️  Check your email and confirm the subscription to receive payment alerts"
+}
+
 display_summary() {
     print_header "Setup Complete!"
 
@@ -138,6 +165,7 @@ main() {
     echo "  5. Bootstrap CDK (first time only)"
     echo "  6. Deploy AWS stack"
     echo "  7. Store mnemonic in Secrets Manager"
+    echo "  8. Subscribe to SNS notifications (optional)"
     echo ""
 
     read -p "Continue? (y/N): " -n 1 -r
@@ -151,6 +179,7 @@ main() {
     bootstrap_cdk
     deploy_stack
     setup_secrets
+    subscribe_sns_notifications
     display_summary
 }
 

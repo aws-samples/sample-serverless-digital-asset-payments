@@ -11,6 +11,7 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
+
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
 import * as dotenv from 'dotenv';
@@ -161,13 +162,13 @@ export class SuiPaymentStack extends cdk.Stack {
     const createInvoiceModel = api.addModel('CreateInvoiceModel', {
       contentType: 'application/json',
       modelName: 'CreateInvoiceModel',
+      description: 'Create invoice – amount in human-readable units',
       schema: {
         type: apigateway.JsonSchemaType.OBJECT,
         required: ['amount', 'reference_id', 'expiry_seconds'],
         properties: {
           amount: {
             type: apigateway.JsonSchemaType.NUMBER,
-            exclusiveMinimum: 0,
           },
           reference_id: {
             type: apigateway.JsonSchemaType.STRING,
@@ -481,121 +482,14 @@ export class SuiPaymentStack extends cdk.Stack {
     });
     sweeperDurationAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
 
-    // CloudWatch Dashboard
-    const dashboard = new cloudwatch.Dashboard(this, 'PaymentDashboard', {
-      dashboardName: 'SUI-Payment-Agent',
-    });
-
-    // Row 1: Lambda Invocations
-    dashboard.addWidgets(
-      new cloudwatch.GraphWidget({
-        title: 'Lambda Invocations',
-        left: [
-          invoiceGenerator.metricInvocations({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
-          watcher.metricInvocations({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
-          sweeper.metricInvocations({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
-        ],
-        width: 12,
-      }),
-      new cloudwatch.GraphWidget({
-        title: 'Lambda Errors',
-        left: [
-          invoiceGenerator.metricErrors({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
-          watcher.metricErrors({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
-          sweeper.metricErrors({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
-        ],
-        width: 12,
-      })
-    );
-
-    // Row 2: Lambda Duration
-    dashboard.addWidgets(
-      new cloudwatch.GraphWidget({
-        title: 'Lambda Duration (ms)',
-        left: [
-          invoiceGenerator.metricDuration({
-            statistic: 'Average',
-            period: cdk.Duration.minutes(5),
-          }),
-          watcher.metricDuration({ statistic: 'Average', period: cdk.Duration.minutes(5) }),
-          sweeper.metricDuration({ statistic: 'Average', period: cdk.Duration.minutes(5) }),
-        ],
-        width: 12,
-      }),
-      new cloudwatch.SingleValueWidget({
-        title: 'Sweeper Success Rate (Last Hour)',
-        metrics: [
-          new cloudwatch.MathExpression({
-            expression: '(invocations - errors) / invocations * 100',
-            usingMetrics: {
-              invocations: sweeper.metricInvocations({
-                statistic: 'Sum',
-                period: cdk.Duration.hours(1),
-              }),
-              errors: sweeper.metricErrors({ statistic: 'Sum', period: cdk.Duration.hours(1) }),
-            },
-            label: 'Success Rate %',
-          }),
-        ],
-        width: 12,
-      })
-    );
-
-    // Row 3: DynamoDB Metrics
-    dashboard.addWidgets(
-      new cloudwatch.GraphWidget({
-        title: 'DynamoDB Read/Write Capacity',
-        left: [
-          invoiceTable.metricConsumedReadCapacityUnits({
-            statistic: 'Sum',
-            period: cdk.Duration.minutes(5),
-          }),
-          invoiceTable.metricConsumedWriteCapacityUnits({
-            statistic: 'Sum',
-            period: cdk.Duration.minutes(5),
-          }),
-        ],
-        width: 12,
-      }),
-      new cloudwatch.GraphWidget({
-        title: 'DynamoDB Throttles',
-        left: [
-          invoiceTable.metricUserErrors({ statistic: 'Sum', period: cdk.Duration.minutes(5) }),
-          invoiceTable.metricSystemErrorsForOperations({
-            statistic: 'Sum',
-            period: cdk.Duration.minutes(5),
-          }),
-        ],
-        width: 12,
-      })
-    );
-
-    // Row 4: Sweep custom metrics (emitted by sweeper Lambda)
-    const sweepSuccessMetric = new cloudwatch.Metric({
-      namespace: 'SUIPayment',
-      metricName: 'SweepsSuccessful',
-      statistic: 'Sum',
-      period: cdk.Duration.minutes(5),
-    });
-
-    const sweepFailedMetric = new cloudwatch.Metric({
-      namespace: 'SUIPayment',
-      metricName: 'SweepsFailed',
-      statistic: 'Sum',
-      period: cdk.Duration.minutes(5),
-    });
-
-    dashboard.addWidgets(
-      new cloudwatch.GraphWidget({
-        title: 'Sweep Results',
-        left: [sweepSuccessMetric, sweepFailedMetric],
-        width: 24,
-      })
-    );
-
-    // Alarm: Failed sweeps
+    // Alarm: Failed sweeps (sweeper emits SweepsFailed to SUIPayment namespace)
     const failedSweepsAlarm = new cloudwatch.Alarm(this, 'FailedSweepsAlarm', {
-      metric: sweepFailedMetric,
+      metric: new cloudwatch.Metric({
+        namespace: 'SUIPayment',
+        metricName: 'SweepsFailed',
+        statistic: 'Sum',
+        period: cdk.Duration.minutes(5),
+      }),
       threshold: 1,
       evaluationPeriods: 1,
       alarmDescription: 'One or more sweeps have failed',

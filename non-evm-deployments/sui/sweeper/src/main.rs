@@ -245,7 +245,6 @@ async fn sweep_funds(
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(0.0);
                 // Convert human-readable SUI to MIST for native transfers
-                let amount_mist: u64 = (amount * 1_000_000_000.0).round() as u64;
                 
                 // Check if this is a token invoice
                 let token_type = new_image.get("token_type")
@@ -393,8 +392,22 @@ async fn sweep_funds(
                     )
                 } else {
                     // Native SUI transfer — invoice wallet is sender and gas payer
+                    // Fetch the live balance so we sweep the full amount,
+                    // not just the invoiced value. transfer_sui with
+                    // Some(balance) sends that exact amount; gas is
+                    // deducted from the same coin object beforehand by
+                    // the SDK, so the net received by treasury is
+                    // balance - gas.
+                    let sui_balance = sui_client
+                        .coin_read_api()
+                        .get_balance(from_address, None)
+                        .await
+                        .map_err(|e| Error::from(format!("Failed to get SUI balance: {}", e)))?;
+                    let sweep_amount = sui_balance.total_balance as u64;
+                    eprintln!("   ✓ Sweeping full balance: {} MIST", sweep_amount);
+
                     sui_client.transaction_builder()
-                        .transfer_sui(from_address, gas_coin, gas_budget, treasury_sui_address, Some(amount_mist))
+                        .transfer_sui(from_address, gas_coin, gas_budget, treasury_sui_address, Some(sweep_amount))
                         .await
                         .map_err(|e| Error::from(format!("Failed to build transaction: {}", e)))?
                 };

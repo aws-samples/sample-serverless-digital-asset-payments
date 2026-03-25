@@ -196,7 +196,7 @@ curl -X POST "${API_URL}create-invoice" \
     "reference_id": "order-124",
     "expiry_seconds": 3600,
     "token_type": "token",
-    "token_address": "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN",
+    "token_address": "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
     "token_symbol": "USDC",
     "token_decimals": 6
   }'
@@ -337,7 +337,7 @@ Create a new payment invoice with a unique SUI address.
   "reference_id": "order-124",
   "expiry_seconds": 3600,
   "token_type": "token",
-  "token_address": "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN",
+  "token_address": "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
   "token_symbol": "USDC",
   "token_decimals": 6
 }
@@ -362,7 +362,7 @@ Create a new payment invoice with a unique SUI address.
 **Token Whitelist:** Only whitelisted tokens are accepted. Current whitelist:
 
 - USDC:
-  `0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN`
+  `0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC`
 
 To add tokens, update the whitelist in `invoice-generator/src/main.rs` and
 redeploy.
