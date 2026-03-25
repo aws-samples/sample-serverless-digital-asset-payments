@@ -4,7 +4,7 @@
   "private": true,
   "description": "AWS CDK Stack for Solana Digital Asset Invoices",
   "dependencies": {
-    "@aws-sdk/client-kms": "^3.948.0",
+    "@aws-sdk/client-kms": "^3.1016.0",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.95.8",
     "aws-cdk-lib": "^2.232.1",
