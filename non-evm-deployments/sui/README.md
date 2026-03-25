@@ -211,9 +211,9 @@ Response:
 {
   "invoice_id": "550e8400-e29b-41d4-a716-446655440000",
   "recipient_address": "0xabc123...",
-  "amount": 100000000,
+  "amount": 0.1,
   "expiry": 1234567890,
-  "qr_code_base64": "data:image/png;base64,iVBORw0KG..."
+  "qr_code_base64": "<base64-encoded Unicode text QR code>"
 }
 ```
 
@@ -373,9 +373,9 @@ redeploy.
 {
   "invoice_id": "550e8400-e29b-41d4-a716-446655440000",
   "recipient_address": "0xabc123...",
-  "amount": 100000000,
+  "amount": 0.1,
   "expiry": 1234567890,
-  "qr_code_base64": "data:image/png;base64,..."
+  "qr_code_base64": "<base64-encoded Unicode text QR code>"
 }
 ```
 
@@ -395,7 +395,7 @@ List all invoices with optional filtering and pagination.
 ```json
 {
   "invoices": [...],
-  "lastEvaluatedKey": "..."
+  "lastKey": "..."
 }
 ```
 
@@ -409,7 +409,7 @@ Get details for a specific invoice.
 {
   "invoice_id": "550e8400-e29b-41d4-a716-446655440000",
   "recipient_address": "0xabc123...",
-  "amount": 100000000,
+  "amount": 0.1,
   "status": "paid",
   "created_at": 1234567890,
   "expiry": 1234571490
