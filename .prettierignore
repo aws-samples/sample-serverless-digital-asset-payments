@@ -6,3 +6,10 @@ package-lock.json
 .env
 .env.*
 *.log
+
+# Rust build artifacts
+**/target/
+non-evm-deployments/sui/target/
+
+# Coverage
+coverage/
