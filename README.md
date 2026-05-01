@@ -7,7 +7,8 @@ EVM-compatible blockchain with automated payment detection and fund sweeping
 capabilities.
 
 > **Note:** Looking for Solana support? Check out the
-> [Solana](non-evm-deployments/solana/) or [Sui](non-evm-deployments/sui/) implementations.
+> [Solana](non-evm-deployments/solana/) or [Sui](non-evm-deployments/sui/)
+> implementations.
 
 ## Table of Contents
 
