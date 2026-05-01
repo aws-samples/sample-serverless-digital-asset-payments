@@ -1,0 +1,32 @@
+{
+  "name": "sui-payment-infra",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "cdk": "cdk",
+    "generate-wallets": "node scripts/generate-wallets.js",
+    "build-lambdas": "./build.sh",
+    "setup": "./scripts/setup.sh",
+    "predeploy": "rm -f infra/*.js infra/*.d.ts && rm -rf cdk.out",
+    "deploy": "cdk deploy --require-approval never",
+    "setup-secrets": "node scripts/setup-secrets.js",
+    "test-payment": "./scripts/test-payment.sh",
+    "get-kms-address": "node scripts/get-kms-address.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "aws-cdk": "^2.150.0",
+    "cdk-nag": "^2.37.55",
+    "dotenv": "^16.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudformation": "^3.1016.0",
+    "@aws-sdk/client-kms": "^3.1016.0",
+    "@aws-sdk/client-secrets-manager": "^3.1015.0",
+    "@mysten/sui": "^2.9.1",
+    "aws-cdk-lib": "^2.150.0",
+    "bip39": "^3.1.0",
+    "constructs": "^10.0.0"
+  }
+}

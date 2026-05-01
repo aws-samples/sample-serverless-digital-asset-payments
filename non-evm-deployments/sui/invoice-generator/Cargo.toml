@@ -1,0 +1,23 @@
+[package]
+name = "invoice-generator"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "bootstrap"
+path = "src/main.rs"
+
+[dependencies]
+shared = { path = "../shared" }
+lambda_runtime = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+aws-config = { workspace = true }
+aws-sdk-dynamodb = { workspace = true }
+aws-sdk-secretsmanager = { workspace = true }
+aws_lambda_events = { version = "0.15", default-features = false, features = ["apigw"] }
+anyhow = { workspace = true }
+qrcode = { workspace = true }
+base64 = { workspace = true }
+uuid = "1"
