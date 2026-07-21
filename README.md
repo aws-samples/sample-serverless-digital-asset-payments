@@ -2,7 +2,9 @@
 
 **Authored by: Simon Goldberg and David Dornseifer**
 
-> This sample is part of the [AWS Digital Asset Samples](https://aws-samples.github.io/aws-digital-asset-samples/) collection.
+> This sample is part of the
+> [AWS Digital Asset Samples](https://aws-samples.github.io/aws-digital-asset-samples/)
+> collection.
 
 This solution supports native (i.e ETH) and ERC20 token payments on _any_
 EVM-compatible blockchain with automated payment detection and fund sweeping
