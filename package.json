@@ -7,7 +7,7 @@
     "@aws-crypto/client-node": "^4.2.1",
     "@aws-sdk/client-kms": "^3.797.0",
     "@aws-sdk/client-secrets-manager": "^3.797.0",
-    "aws-cdk-lib": "^2.192.0",
+    "aws-cdk-lib": "^2.262.0",
     "aws-sdk": "^2.1692.0",
     "bip39": "^3.1.0",
     "constructs": "^10.3.0",
