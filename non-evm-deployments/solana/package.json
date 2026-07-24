@@ -7,7 +7,7 @@
     "@aws-sdk/client-kms": "^3.948.0",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.95.8",
-    "aws-cdk-lib": "^2.232.1",
+    "aws-cdk-lib": "^2.262.0",
     "aws-sdk": "^2.1692.0",
     "bip39": "^3.1.0",
     "bs58": "^6.0.0",
