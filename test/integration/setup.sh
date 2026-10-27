@@ -241,8 +241,8 @@ bootstrap_cdk() {
     
     print_status "Checking if CDK is bootstrapped for account $AWS_ACCOUNT in region $AWS_REGION..."
     
-    # Check if bootstrap stack exists
-    if aws cloudformation describe-stacks --stack-name CDKToolkit --region "$AWS_REGION" >/dev/null 2>&1; then
+    # Check for the bootstrap version parameter (works regardless of bootstrap stack name)
+    if aws ssm get-parameter --name /cdk-bootstrap/hnb659fds/version --region "$AWS_REGION" >/dev/null 2>&1; then
         print_success "CDK already bootstrapped"
     else
         print_status "Bootstrapping CDK..."
